@@ -49,17 +49,39 @@ def make_llm_call(prompt):
     # Next Steps:
     # Set up Vector DB for RAG that keeps user prompt history and relevant user external input context
     # Integration with LangChain and Multi-Turn Dialogue Management
-    # contextualize_model()
+    # context = contextualize_model(prompt, k=5)
+
+    # context_dicts = {
+    #     "user_profile":{
+    #         "name":
+    #         "age":
+    #         "weight":
+    #         "height":
+    #     },
+    #     "context": context,
+    #     "prompt": prompt
+    # }
+
+    # context_prompt = f"Given User Information and Previous Most Relevant Context, generate a personalized response. Context Dicts: {context_dicts}"
+
+
 
     response = model.generate_content(
-        contents=prompt
+        contents=prompt #, content=context_prompt when contextualization is working
     )
+
+    # add_to_vector_db(prompt)
 
     print(response.text)    
 
 # RAG with LangChain for best contextualization?
-def contextualize_model():
+def contextualize_model(query, k):
     pass
+
+# Add user prompt/data to vector DB for RAG
+def add_to_vector_db():
+    pass
+
 
 def main():
     app = create_app()
