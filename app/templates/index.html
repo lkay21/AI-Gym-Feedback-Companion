@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workout Companion - Prototype</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .prototype-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .prototype-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .prototype-title {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--white);
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, #c4b5fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .prototype-subtitle {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .screens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 32px;
+            padding: 20px;
+        }
+
+        .screen-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .screen-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .screen-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+
+        .screen-icon svg {
+            width: 32px;
+            height: 32px;
+            color: var(--white);
+        }
+
+        .screen-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: 8px;
+        }
+
+        .screen-description {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .screen-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--white);
+            color: var(--primary);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .screen-link:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .screen-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .flow-section {
+            margin-top: 60px;
+            text-align: center;
+        }
+
+        .flow-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: 24px;
+        }
+
+        .flow-steps {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .flow-step {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            color: var(--white);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .flow-arrow {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .prototype-title {
+                font-size: 32px;
+            }
+
+            .screens-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="prototype-container">
+        <header class="prototype-header">
+            <h1 class="prototype-title">🏋️ AI Workout Companion</h1>
+            <p class="prototype-subtitle">
+                A beautiful, intelligent fitness app prototype featuring personalized workout plans, 
+                AI-powered coaching with Fred, and comprehensive fitness tracking.
+            </p>
+        </header>
+
+        <div class="screens-grid">
+            <div class="screen-card">
+                <div class="screen-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+                        <polyline points="10 17 15 12 10 7"/>
+                        <line x1="15" y1="12" x2="3" y2="12"/>
+                    </svg>
+                </div>
+                <h3 class="screen-name">Login</h3>
+                <p class="screen-description">Beautiful gradient login screen with username/password and Google sign-in</p>
+                <a href="login.html" class="screen-link">
+                    View Screen
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="screen-card">
+                <div class="screen-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                        <circle cx="8.5" cy="7" r="4"/>
+                        <line x1="20" y1="8" x2="20" y2="14"/>
+                        <line x1="23" y1="11" x2="17" y2="11"/>
+                    </svg>
+                </div>
+                <h3 class="screen-name">Sign Up</h3>
+                <p class="screen-description">Create account screen with elegant white card form design</p>
+                <a href="signup.html" class="screen-link">
+                    View Screen
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="screen-card">
+                <div class="screen-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+                    </svg>
+                </div>
+                <h3 class="screen-name">Chat with Fred</h3>
+                <p class="screen-description">AI fitness companion chat interface for personalized guidance</p>
+                <a href="chat.html" class="screen-link">
+                    View Screen
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="screen-card">
+                <div class="screen-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                </div>
+                <h3 class="screen-name">Dashboard</h3>
+                <p class="screen-description">Main fitness dashboard with workout plan, form score & activity</p>
+                <a href="dashboard.html" class="screen-link">
+                    View Screen
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="screen-card">
+                <div class="screen-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                    </svg>
+                </div>
+                <h3 class="screen-name">Today's Snapshot</h3>
+                <p class="screen-description">Daily workout view with muscle groups and exercise list</p>
+                <a href="snapshot.html" class="screen-link">
+                    View Screen
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="screen-card">
+                <div class="screen-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </div>
+                <h3 class="screen-name">Workout Plan</h3>
+                <p class="screen-description">Calendar view with scheduled workouts and exercise details</p>
+                <a href="workout-plan.html" class="screen-link">
+                    View Screen
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="screen-card">
+                <div class="screen-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                </div>
+                <h3 class="screen-name">Insights</h3>
+                <p class="screen-description">Analytics dashboard with progress charts and workout breakdown</p>
+                <a href="insights.html" class="screen-link">
+                    View Screen
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="flow-section">
+            <h2 class="flow-title">User Flow</h2>
+            <div class="flow-steps">
+                <span class="flow-step">Login / Sign Up</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Chat with Fred (Onboarding)</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Dashboard</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Today's Workout</span>
+                <span class="flow-arrow">→</span>
+                <span class="flow-step">Track Progress</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

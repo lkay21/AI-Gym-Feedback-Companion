@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Workout Companion - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 20px 20px;
+        }
+
+        .dashboard-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+            padding: 0 20px 20px;
+        }
+
+        /* Weekly Plan Card */
+        .weekly-plan-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .weekly-plan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .weekly-plan-card:active {
+            transform: scale(0.98);
+        }
+
+        .weekly-plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .weekly-plan-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .weekly-plan-dates {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        .weekly-plan-icon {
+            width: 56px;
+            height: 56px;
+        }
+
+        .workout-day {
+            font-size: 14px;
+            color: var(--gray-600);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .workout-day strong {
+            color: var(--gray-800);
+        }
+
+        .workout-day .check-icon {
+            width: 18px;
+            height: 18px;
+            color: var(--success);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .workout-day.completed .check-icon {
+            opacity: 1;
+        }
+
+        .workout-day.completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        /* Form Score Card */
+        .form-score-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .form-score-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .form-score-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .form-score-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--gray-600);
+        }
+
+        .form-score-description {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .form-score-preview {
+            width: 100%;
+            height: 140px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .form-score-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .form-score-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .upload-btn {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            background: var(--white);
+            color: var(--gray-800);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-btn:hover {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .upload-btn.uploading {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .form-score-result {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-score-result strong {
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .score-badge {
+            background: linear-gradient(135deg, var(--primary) 0%, #a78bfa 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .form-score-feedback {
+            font-size: 13px;
+            color: var(--gray-500);
+            line-height: 1.5;
+            padding: 10px;
+            background: var(--gray-50);
+            border-radius: 10px;
+            border-left: 3px solid var(--primary);
+        }
+
+        /* Steps Card */
+        .steps-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .steps-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .steps-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .steps-icon svg {
+            width: 24px;
+            height: 24px;
+            color: #f59e0b;
+        }
+
+        .steps-info {
+            flex: 1;
+        }
+
+        .steps-today {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .steps-today .count {
+            color: var(--primary);
+            transition: all 0.3s;
+        }
+
+        .steps-today .count.updating {
+            transform: scale(1.1);
+            color: var(--success);
+        }
+
+        .steps-average {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        /* Activity Graph */
+        .activity-graph {
+            height: 120px;
+            position: relative;
+            margin-top: 16px;
+        }
+
+        .activity-line {
+            position: absolute;
+            bottom: 24px;
+            left: 0;
+            right: 0;
+            height: 80px;
+        }
+
+        .activity-line svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .activity-times {
+            display: flex;
+            justify-content: space-between;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0 10px;
+        }
+
+        .activity-time {
+            font-size: 10px;
+            color: var(--gray-400);
+        }
+
+        .calorie-badge {
+            position: absolute;
+            right: 30px;
+            top: 0;
+            background: #22c55e;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.6); }
+        }
+
+        /* Progress indicator on graph */
+        .current-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--secondary);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.5);
+            right: 35px;
+            top: 25px;
+            animation: point-pulse 1.5s infinite;
+        }
+
+        @keyframes point-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .app-container {
+            padding-bottom: 160px;
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            width: 90%;
+            max-width: 360px;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+
+        .modal-btn-cancel {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        .modal-btn-confirm {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--gray-800);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1001;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Hidden file input */
+        .hidden-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="device-frame">
+        <div class="dynamic-island"></div>
+        
+        <div class="status-bar">
+            <span class="time">9:41</span>
+            <div class="icons">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3C6.95 3 3 5.95 3 9.5c0 2.4 1.56 4.5 3.89 5.72L4 21l4.39-2.17c1.14.39 2.37.67 3.61.67 5.05 0 9-2.95 9-6.5S17.05 3 12 3z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="2" y="7" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <rect x="4" y="9" width="14" height="8" rx="1" fill="currentColor"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="app-container">
+            <div class="dashboard-header">
+                <div></div>
+                <button class="menu-button" onclick="toggleMenu()">
+                    Menu
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </button>
+            </div>
+
+            <h1 class="dashboard-title animate-fade-in">Fitness Dashboard</h1>
+
+            <!-- Weekly Workout Plan -->
+            <div class="weekly-plan-card animate-fade-in animate-delay-1" onclick="window.location.href='workout-plan.html'">
+                <div class="weekly-plan-header">
+                    <div>
+                        <div class="weekly-plan-title">Weekly Workout Plan</div>
+                        <div class="weekly-plan-dates">12/9/2025 - 12/15/2025</div>
+                    </div>
+                    <svg class="weekly-plan-icon" viewBox="0 0 64 64" fill="none">
+                        <!-- Running person icon -->
+                        <circle cx="40" cy="12" r="6" fill="#c4b5fd"/>
+                        <path d="M28 58L34 42L26 36L32 24L42 28L48 20" stroke="#7c3aed" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M42 28L52 34" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>
+                        <path d="M34 42L44 48" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="workout-day" data-day="monday" onclick="event.stopPropagation(); toggleWorkoutDay(this)">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Monday</strong> - Biceps, Triceps, Shoulders</span>
+                </div>
+                <div class="workout-day" data-day="wednesday" onclick="event.stopPropagation(); toggleWorkoutDay(this)">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Wednesday</strong> - Glutes, Quads</span>
+                </div>
+                <div class="workout-day" data-day="friday" onclick="event.stopPropagation(); toggleWorkoutDay(this)">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Friday</strong> - Abs, Cardio</span>
+                </div>
+            </div>
+
+            <!-- Form Score -->
+            <div class="form-score-card animate-fade-in animate-delay-2">
+                <div class="form-score-header">
+                    <span class="form-score-title">Form Score</span>
+                    <svg class="form-score-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </div>
+                <p class="form-score-description">Upload a video of yourself performing a specific exercise to know how good your form is!</p>
+                <div class="form-score-preview" id="videoPreview">
+                    <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=200&fit=crop" alt="Gym workout" id="previewImage">
+                    <video id="previewVideo" style="display: none;" autoplay muted loop></video>
+                    <button class="upload-btn" id="uploadBtn" onclick="triggerUpload()">Upload Video</button>
+                    <input type="file" class="hidden-input" id="videoInput" accept="video/*" onchange="handleVideoUpload(event)">
+                </div>
+                <div class="form-score-result">
+                    Form Score: <strong id="formScoreValue">7.8</strong>
+                    <span class="score-badge" id="scoreBadge">Good</span>
+                </div>
+                <div class="form-score-feedback" id="formFeedback">
+                    <strong>Feedback:</strong> Keep your back straight and your arm at a 90 degree angle!
+                </div>
+            </div>
+
+            <!-- Steps Card -->
+            <div class="steps-card animate-fade-in animate-delay-3">
+                <div class="steps-header">
+                    <div class="steps-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                    </div>
+                    <div class="steps-info">
+                        <div class="steps-today">Today's Steps: <span class="count" id="stepsCount">7,855</span></div>
+                        <div class="steps-average">Weekly Average: <span id="weeklyAverage">8,933</span></div>
+                    </div>
+                </div>
+                
+                <div class="activity-graph">
+                    <div class="calorie-badge" id="calorieBadge">120 cal</div>
+                    <div class="current-point"></div>
+                    <div class="activity-line">
+                        <svg viewBox="0 0 300 80" preserveAspectRatio="none" id="activityChart">
+                            <defs>
+                                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.4"/>
+                                    <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.05"/>
+                                </linearGradient>
+                            </defs>
+                            <path id="areaPath" d="M0,60 Q30,55 60,50 T120,40 T180,45 T240,25 T300,35 L300,80 L0,80 Z" fill="url(#areaGradient)"/>
+                            <path id="linePath" d="M0,60 Q30,55 60,50 T120,40 T180,45 T240,25 T300,35" fill="none" stroke="#06b6d4" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="activity-times">
+                        <span class="activity-time">8AM</span>
+                        <span class="activity-time">10AM</span>
+                        <span class="activity-time">12PM</span>
+                        <span class="activity-time">2PM</span>
+                        <span class="activity-time">4PM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Enter Your Prompt Here..." onkeypress="handleChatKeypress(event)">
+            <button class="send-btn" onclick="sendChatMessage()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16V8M8 12l4-4 4 4"/>
+                </svg>
+            </button>
+        </div>
+
+        <nav class="bottom-nav">
+            <a href="dashboard.html" class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22" stroke="white" stroke-width="2"/>
+                </svg>
+                Home
+            </a>
+            <a href="workout-plan.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Plan
+            </a>
+            <a href="chat.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+                </svg>
+                Chat
+            </a>
+            <a href="insights.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                Insights
+            </a>
+            <a href="snapshot.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                </svg>
+                Today
+            </a>
+        </nav>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Steps Update Modal -->
+    <div class="modal-overlay" id="stepsModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Update Today's Steps</h3>
+            <div class="modal-body">
+                <input type="number" class="modal-input" id="stepsInput" placeholder="Enter steps count" value="7855">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal('stepsModal')">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" onclick="updateSteps()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dummy data store
+        let appData = {
+            steps: 7855,
+            weeklyAverage: 8933,
+            calories: 120,
+            formScore: 7.8,
+            completedWorkouts: [],
+            chatHistory: []
+        };
+
+        // Load saved data from localStorage
+        function loadData() {
+            const saved = localStorage.getItem('fitnessAppData');
+            if (saved) {
+                appData = JSON.parse(saved);
+                updateUI();
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('fitnessAppData', JSON.stringify(appData));
+        }
+
+        // Update UI with current data
+        function updateUI() {
+            document.getElementById('stepsCount').textContent = appData.steps.toLocaleString();
+            document.getElementById('weeklyAverage').textContent = appData.weeklyAverage.toLocaleString();
+            document.getElementById('calorieBadge').textContent = appData.calories + ' cal';
+            document.getElementById('formScoreValue').textContent = appData.formScore.toFixed(1);
+            
+            // Update workout days
+            appData.completedWorkouts.forEach(day => {
+                const elem = document.querySelector(`[data-day="${day}"]`);
+                if (elem) elem.classList.add('completed');
+            });
+
+            updateScoreBadge();
+        }
+
+        // Toggle workout day completion
+        function toggleWorkoutDay(elem) {
+            const day = elem.dataset.day;
+            elem.classList.toggle('completed');
+            
+            if (elem.classList.contains('completed')) {
+                if (!appData.completedWorkouts.includes(day)) {
+                    appData.completedWorkouts.push(day);
+                }
+                showToast('Workout completed! Great job! 💪', 'success');
+                
+                // Add bonus steps and calories for completed workout
+                appData.steps += Math.floor(Math.random() * 500) + 500;
+                appData.calories += Math.floor(Math.random() * 50) + 30;
+                updateUI();
+            } else {
+                appData.completedWorkouts = appData.completedWorkouts.filter(d => d !== day);
+            }
+            
+            saveData();
+        }
+
+        // Video upload handling
+        function triggerUpload() {
+            document.getElementById('videoInput').click();
+        }
+
+        function handleVideoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const btn = document.getElementById('uploadBtn');
+                btn.innerHTML = '<span class="spinner"></span>Analyzing...';
+                btn.classList.add('uploading');
+
+                // Simulate upload and analysis
+                setTimeout(() => {
+                    // Create video preview
+                    const videoURL = URL.createObjectURL(file);
+                    const video = document.getElementById('previewVideo');
+                    const image = document.getElementById('previewImage');
+                    
+                    video.src = videoURL;
+                    video.style.display = 'block';
+                    image.style.display = 'none';
+                    
+                    btn.textContent = 'Re-upload';
+                    btn.classList.remove('uploading');
+
+                    // Simulate form analysis with random score
+                    setTimeout(() => {
+                        analyzeForm();
+                    }, 1500);
+                }, 2000);
+            }
+        }
+
+        function analyzeForm() {
+            // Generate random form score between 6.0 and 10.0
+            const newScore = (Math.random() * 4 + 6).toFixed(1);
+            appData.formScore = parseFloat(newScore);
+            
+            // Update UI with animation
+            const scoreElem = document.getElementById('formScoreValue');
+            scoreElem.style.transform = 'scale(1.3)';
+            scoreElem.style.color = '#22c55e';
+            scoreElem.textContent = newScore;
+            
+            setTimeout(() => {
+                scoreElem.style.transform = 'scale(1)';
+                scoreElem.style.color = '';
+            }, 500);
+
+            updateScoreBadge();
+            updateFeedback();
+            saveData();
+            
+            showToast('Form analyzed! Score: ' + newScore, 'success');
+        }
+
+        function updateScoreBadge() {
+            const badge = document.getElementById('scoreBadge');
+            const score = appData.formScore;
+            
+            if (score >= 9) {
+                badge.textContent = 'Excellent';
+                badge.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+            } else if (score >= 7.5) {
+                badge.textContent = 'Good';
+                badge.style.background = 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)';
+            } else if (score >= 6) {
+                badge.textContent = 'Fair';
+                badge.style.background = 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)';
+            } else {
+                badge.textContent = 'Needs Work';
+                badge.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
+            }
+        }
+
+        function updateFeedback() {
+            const feedbacks = [
+                "Keep your back straight and your arm at a 90 degree angle!",
+                "Great form! Try to slow down the eccentric movement.",
+                "Watch your knee alignment during the lift.",
+                "Excellent posture! Focus on breathing rhythm.",
+                "Try to engage your core more throughout the movement.",
+                "Good depth! Keep your chest up during the lift."
+            ];
+            
+            const feedback = feedbacks[Math.floor(Math.random() * feedbacks.length)];
+            document.getElementById('formFeedback').innerHTML = '<strong>Feedback:</strong> ' + feedback;
+        }
+
+        // Steps tracking
+        document.querySelector('.steps-card').addEventListener('click', () => {
+            document.getElementById('stepsInput').value = appData.steps;
+            openModal('stepsModal');
+        });
+
+        function updateSteps() {
+            const newSteps = parseInt(document.getElementById('stepsInput').value);
+            if (newSteps && newSteps > 0) {
+                appData.steps = newSteps;
+                appData.calories = Math.floor(newSteps * 0.04); // Rough calorie calculation
+                
+                // Animate the update
+                const countElem = document.getElementById('stepsCount');
+                countElem.classList.add('updating');
+                
+                setTimeout(() => {
+                    countElem.classList.remove('updating');
+                }, 500);
+                
+                updateUI();
+                saveData();
+                closeModal('stepsModal');
+                showToast('Steps updated! Keep moving! 🚶', 'success');
+                
+                // Update graph animation
+                animateGraph();
+            }
+        }
+
+        function animateGraph() {
+            const linePath = document.getElementById('linePath');
+            const areaPath = document.getElementById('areaPath');
+            
+            // Generate new random path
+            const points = [];
+            for (let i = 0; i <= 5; i++) {
+                points.push(Math.random() * 40 + 20);
+            }
+            
+            const newLine = `M0,${points[0]} Q30,${points[0]-5} 60,${points[1]} T120,${points[2]} T180,${points[3]} T240,${points[4]} T300,${points[5]}`;
+            const newArea = newLine + ' L300,80 L0,80 Z';
+            
+            linePath.setAttribute('d', newLine);
+            areaPath.setAttribute('d', newArea);
+        }
+
+        // Modal handling
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Toast notification
+        function showToast(message, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (type ? ' ' + type : '');
+            
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // Chat functionality
+        function handleChatKeypress(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                // Save to chat history
+                appData.chatHistory.push({
+                    role: 'user',
+                    message: message,
+                    timestamp: new Date().toISOString()
+                });
+                saveData();
+                
+                // Redirect to chat page
+                showToast('Opening chat with Fred...');
+                setTimeout(() => {
+                    window.location.href = 'chat.html';
+                }, 500);
+            }
+        }
+
+        // Menu toggle (placeholder)
+        function toggleMenu() {
+            showToast('Menu coming soon!');
+        }
+
+        // Simulate live step updates
+        function simulateStepUpdates() {
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    appData.steps += Math.floor(Math.random() * 10) + 1;
+                    appData.calories = Math.floor(appData.steps * 0.04);
+                    updateUI();
+                    saveData();
+                }
+            }, 5000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            simulateStepUpdates();
+        });
+    </script>
+</body>
+</html>

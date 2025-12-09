@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Workout Companion - Insights</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+        .insights-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 20px 20px;
+        }
+
+        .insights-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+            text-align: center;
+            padding: 0 20px 16px;
+        }
+
+        /* Time Toggle */
+        .time-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            padding: 0 16px 20px;
+            flex-wrap: wrap;
+        }
+
+        .time-btn {
+            padding: 10px 16px;
+            border-radius: 50px;
+            border: none;
+            font-family: var(--font-family);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .time-btn.active {
+            background: var(--white);
+            color: var(--gray-800);
+        }
+
+        .time-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Bar Chart */
+        .chart-container {
+            padding: 0 16px 20px;
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 160px;
+            padding: 16px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            position: relative;
+        }
+
+        .bar-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .bar {
+            width: 20px;
+            background: linear-gradient(180deg, #a78bfa 0%, #7c3aed 100%);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.5s ease;
+            cursor: pointer;
+        }
+
+        .bar:hover {
+            background: linear-gradient(180deg, #c4b5fd 0%, #8b5cf6 100%);
+        }
+
+        .bar-label {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .goal-line {
+            position: absolute;
+            top: 30px;
+            left: 0;
+            right: 0;
+            height: 1px;
+            border-top: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+
+        .goal-badge {
+            position: absolute;
+            top: 16px;
+            right: 12px;
+            background: #22c55e;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        /* Stats Cards Grid */
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 0 16px 16px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .stat-box:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .stat-box-icon {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 8px;
+        }
+
+        .stat-box-icon svg {
+            width: 100%;
+            height: 100%;
+            color: var(--secondary);
+        }
+
+        .stat-box-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #22c55e;
+            margin-bottom: 2px;
+            transition: all 0.3s;
+        }
+
+        .stat-box-value.updating {
+            transform: scale(1.1);
+        }
+
+        .stat-box-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .stat-box-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: 8px;
+        }
+
+        /* Progress Circle Section */
+        .progress-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 0 16px 16px;
+        }
+
+        .calories-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .calories-icon {
+            width: 36px;
+            height: 36px;
+            background: #f97316;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .calories-icon svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+        }
+
+        .calories-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: 4px;
+        }
+
+        .calories-subtitle {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .goal-progress-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .goal-progress-card:hover {
+            transform: scale(1.02);
+        }
+
+        .goal-progress-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 12px;
+        }
+
+        .progress-circle {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .progress-circle svg {
+            transform: rotate(-90deg);
+            width: 80px;
+            height: 80px;
+        }
+
+        .progress-circle-bg {
+            fill: none;
+            stroke: var(--gray-200);
+            stroke-width: 8;
+        }
+
+        .progress-circle-fill {
+            fill: none;
+            stroke: #22c55e;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 220;
+            transition: stroke-dashoffset 1s ease;
+        }
+
+        .progress-circle-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        /* Pie Chart Section */
+        .pie-chart-section {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 20px;
+            margin: 0 16px 20px;
+        }
+
+        .pie-chart-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-800);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .pie-chart-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .pie-chart {
+            width: 120px;
+            height: 120px;
+            position: relative;
+        }
+
+        .pie-chart svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .pie-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--gray-600);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .legend-item:hover {
+            background: var(--gray-100);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .legend-item:hover .legend-dot {
+            transform: scale(1.3);
+        }
+
+        .app-container {
+            padding-bottom: 160px;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: fixed;
+            background: var(--gray-800);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="device-frame">
+        <div class="dynamic-island"></div>
+        
+        <div class="status-bar">
+            <span class="time">9:41</span>
+            <div class="icons">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3C6.95 3 3 5.95 3 9.5c0 2.4 1.56 4.5 3.89 5.72L4 21l4.39-2.17c1.14.39 2.37.67 3.61.67 5.05 0 9-2.95 9-6.5S17.05 3 12 3z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="2" y="7" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <rect x="4" y="9" width="14" height="8" rx="1" fill="currentColor"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="app-container">
+            <div class="insights-header">
+                <div></div>
+                <button class="menu-button">
+                    Menu
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </button>
+            </div>
+
+            <h1 class="insights-title animate-fade-in">Your Insights</h1>
+
+            <div class="time-toggle animate-fade-in animate-delay-1">
+                <button class="time-btn" data-period="day" onclick="changePeriod('day')">Day</button>
+                <button class="time-btn active" data-period="week" onclick="changePeriod('week')">Week</button>
+                <button class="time-btn" data-period="month" onclick="changePeriod('month')">Month</button>
+                <button class="time-btn" data-period="year" onclick="changePeriod('year')">Year</button>
+                <button class="time-btn" data-period="all" onclick="changePeriod('all')">All Time</button>
+            </div>
+
+            <div class="chart-container animate-fade-in animate-delay-2">
+                <div class="bar-chart">
+                    <div class="goal-line"></div>
+                    <div class="goal-badge" id="goalBadge">Goal: 45kg</div>
+                    
+                    <div class="bar-wrapper" data-week="1">
+                        <div class="bar" style="height: 60px;" onclick="showBarDetail(this, 1)"></div>
+                        <span class="bar-label">Week 1</span>
+                    </div>
+                    <div class="bar-wrapper" data-week="2">
+                        <div class="bar" style="height: 75px;" onclick="showBarDetail(this, 2)"></div>
+                        <span class="bar-label">Week 2</span>
+                    </div>
+                    <div class="bar-wrapper" data-week="3">
+                        <div class="bar" style="height: 85px;" onclick="showBarDetail(this, 3)"></div>
+                        <span class="bar-label">Week 3</span>
+                    </div>
+                    <div class="bar-wrapper" data-week="4">
+                        <div class="bar" style="height: 70px;" onclick="showBarDetail(this, 4)"></div>
+                        <span class="bar-label">Week 4</span>
+                    </div>
+                    <div class="bar-wrapper" data-week="5">
+                        <div class="bar" style="height: 90px;" onclick="showBarDetail(this, 5)"></div>
+                        <span class="bar-label">Week 5</span>
+                    </div>
+                    <div class="bar-wrapper" data-week="6">
+                        <div class="bar" style="height: 100px;" onclick="showBarDetail(this, 6)"></div>
+                        <span class="bar-label">Week 6</span>
+                    </div>
+                    <div class="bar-wrapper" data-week="7">
+                        <div class="bar" style="height: 110px;" onclick="showBarDetail(this, 7)"></div>
+                        <span class="bar-label">Week 7</span>
+                    </div>
+                    <div class="bar-wrapper" data-week="8">
+                        <div class="bar" style="height: 95px;" onclick="showBarDetail(this, 8)"></div>
+                        <span class="bar-label">Week 8</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-row animate-fade-in animate-delay-3">
+                <div class="stat-box" onclick="refreshStats()">
+                    <div class="stat-box-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-box-title">Steps</div>
+                    <div class="stat-box-value" id="stepsValue">23,456</div>
+                    <div class="stat-box-label">steps</div>
+                </div>
+                <div class="stat-box" onclick="refreshStats()">
+                    <div class="stat-box-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <div class="stat-box-title">Training</div>
+                    <div class="stat-box-value" id="trainingValue">90</div>
+                    <div class="stat-box-label">minutes</div>
+                </div>
+            </div>
+
+            <div class="progress-section animate-fade-in animate-delay-4">
+                <div class="calories-card">
+                    <div class="calories-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <div class="calories-title">Calories burned</div>
+                    <div class="calories-subtitle">Based on distance and weight.</div>
+                    <div class="stat-box-value" id="caloriesValue" style="margin-top: 8px;">1,250</div>
+                </div>
+                <div class="goal-progress-card" onclick="updateGoalProgress()">
+                    <div class="goal-progress-title">Goal Progress:</div>
+                    <div class="progress-circle">
+                        <svg viewBox="0 0 80 80">
+                            <circle class="progress-circle-bg" cx="40" cy="40" r="35"/>
+                            <circle class="progress-circle-fill" id="progressCircle" cx="40" cy="40" r="35"/>
+                        </svg>
+                        <span class="progress-circle-text" id="progressText">50%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pie-chart-section animate-fade-in animate-delay-4">
+                <h3 class="pie-chart-title">Workout Type Breakdown</h3>
+                <div class="pie-chart-container">
+                    <div class="pie-chart">
+                        <svg viewBox="0 0 100 100" id="pieChart">
+                            <!-- Strength - 46% -->
+                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#7c3aed" stroke-width="20"
+                                stroke-dasharray="115 256" stroke-dashoffset="0" class="pie-segment" data-type="strength"/>
+                            <!-- Cardio - 18% -->
+                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" stroke-width="20"
+                                stroke-dasharray="45 256" stroke-dashoffset="-115" class="pie-segment" data-type="cardio"/>
+                            <!-- HIIT - 15% -->
+                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#eab308" stroke-width="20"
+                                stroke-dasharray="38 256" stroke-dashoffset="-160" class="pie-segment" data-type="hiit"/>
+                            <!-- Mobility - 21% -->
+                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#22c55e" stroke-width="20"
+                                stroke-dasharray="54 256" stroke-dashoffset="-198" class="pie-segment" data-type="mobility"/>
+                        </svg>
+                    </div>
+                    <div class="pie-legend">
+                        <div class="legend-item" onmouseenter="highlightSegment('strength')" onmouseleave="resetSegments()">
+                            <span class="legend-dot" style="background: #7c3aed;"></span>
+                            <span>Strength - <strong id="strengthPercent">46%</strong></span>
+                        </div>
+                        <div class="legend-item" onmouseenter="highlightSegment('cardio')" onmouseleave="resetSegments()">
+                            <span class="legend-dot" style="background: #3b82f6;"></span>
+                            <span>Cardio - <strong id="cardioPercent">18%</strong></span>
+                        </div>
+                        <div class="legend-item" onmouseenter="highlightSegment('hiit')" onmouseleave="resetSegments()">
+                            <span class="legend-dot" style="background: #eab308;"></span>
+                            <span>HIIT - <strong id="hiitPercent">15%</strong></span>
+                        </div>
+                        <div class="legend-item" onmouseenter="highlightSegment('mobility')" onmouseleave="resetSegments()">
+                            <span class="legend-dot" style="background: #22c55e;"></span>
+                            <span>Mobility - <strong id="mobilityPercent">21%</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Enter Your Prompt Here..." onkeypress="handleChatKeypress(event)">
+            <button class="send-btn" onclick="goToChat()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16V8M8 12l4-4 4 4"/>
+                </svg>
+            </button>
+        </div>
+
+        <nav class="bottom-nav">
+            <a href="dashboard.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Home
+            </a>
+            <a href="workout-plan.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Plan
+            </a>
+            <a href="chat.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+                </svg>
+                Chat
+            </a>
+            <a href="insights.html" class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <line x1="18" y1="20" x2="18" y2="10" stroke="white" stroke-width="3"/>
+                    <line x1="12" y1="20" x2="12" y2="4" stroke="white" stroke-width="3"/>
+                    <line x1="6" y1="20" x2="6" y2="14" stroke="white" stroke-width="3"/>
+                </svg>
+                Insights
+            </a>
+            <a href="snapshot.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                </svg>
+                Today
+            </a>
+        </nav>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Data store
+        let insightsData = {
+            period: 'week',
+            steps: 23456,
+            training: 90,
+            calories: 1250,
+            goalProgress: 50,
+            breakdown: {
+                strength: 46,
+                cardio: 18,
+                hiit: 15,
+                mobility: 21
+            }
+        };
+
+        // Period-specific data
+        const periodData = {
+            day: { steps: 7855, training: 45, calories: 320, goal: 15 },
+            week: { steps: 23456, training: 90, calories: 1250, goal: 50 },
+            month: { steps: 98542, training: 380, calories: 5200, goal: 65 },
+            year: { steps: 1245000, training: 4500, calories: 62000, goal: 80 },
+            all: { steps: 2456000, training: 9200, calories: 125000, goal: 90 }
+        };
+
+        // Change time period
+        function changePeriod(period) {
+            insightsData.period = period;
+            
+            // Update active button
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.period === period) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Animate data change
+            const data = periodData[period];
+            animateValue('stepsValue', insightsData.steps, data.steps);
+            animateValue('trainingValue', insightsData.training, data.training);
+            animateValue('caloriesValue', insightsData.calories, data.calories);
+            
+            insightsData.steps = data.steps;
+            insightsData.training = data.training;
+            insightsData.calories = data.calories;
+            insightsData.goalProgress = data.goal;
+
+            // Update progress circle
+            updateProgressCircle(data.goal);
+
+            // Animate bar chart
+            animateBarChart();
+        }
+
+        // Animate number value
+        function animateValue(elementId, start, end) {
+            const element = document.getElementById(elementId);
+            const duration = 500;
+            const startTime = performance.now();
+            
+            element.classList.add('updating');
+            
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const current = Math.floor(start + (end - start) * progress);
+                element.textContent = current.toLocaleString();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    element.classList.remove('updating');
+                }
+            }
+            
+            requestAnimationFrame(update);
+        }
+
+        // Update progress circle
+        function updateProgressCircle(percent) {
+            const circle = document.getElementById('progressCircle');
+            const text = document.getElementById('progressText');
+            const circumference = 220; // 2 * PI * 35
+            const offset = circumference - (percent / 100) * circumference;
+            
+            circle.style.strokeDashoffset = offset;
+            text.textContent = percent + '%';
+        }
+
+        // Animate bar chart
+        function animateBarChart() {
+            const bars = document.querySelectorAll('.bar');
+            bars.forEach((bar, index) => {
+                const baseHeight = 40;
+                const variation = Math.random() * 80;
+                const newHeight = baseHeight + variation;
+                
+                setTimeout(() => {
+                    bar.style.height = newHeight + 'px';
+                }, index * 50);
+            });
+        }
+
+        // Show bar detail
+        function showBarDetail(bar, week) {
+            const tooltip = document.getElementById('tooltip');
+            const rect = bar.getBoundingClientRect();
+            
+            const weekData = {
+                1: { weight: '48.5 kg', change: '-0.5 kg' },
+                2: { weight: '48.2 kg', change: '-0.3 kg' },
+                3: { weight: '47.8 kg', change: '-0.4 kg' },
+                4: { weight: '47.9 kg', change: '+0.1 kg' },
+                5: { weight: '47.5 kg', change: '-0.4 kg' },
+                6: { weight: '47.1 kg', change: '-0.4 kg' },
+                7: { weight: '46.7 kg', change: '-0.4 kg' },
+                8: { weight: '46.5 kg', change: '-0.2 kg' }
+            };
+            
+            tooltip.innerHTML = `Week ${week}<br>Weight: ${weekData[week].weight}<br>Change: ${weekData[week].change}`;
+            tooltip.style.left = rect.left + rect.width / 2 - 50 + 'px';
+            tooltip.style.top = rect.top - 70 + 'px';
+            tooltip.classList.add('show');
+            
+            setTimeout(() => {
+                tooltip.classList.remove('show');
+            }, 2000);
+        }
+
+        // Refresh stats with random data
+        function refreshStats() {
+            const newSteps = insightsData.steps + Math.floor(Math.random() * 1000) - 500;
+            const newTraining = insightsData.training + Math.floor(Math.random() * 10) - 5;
+            const newCalories = insightsData.calories + Math.floor(Math.random() * 100) - 50;
+            
+            animateValue('stepsValue', insightsData.steps, Math.max(0, newSteps));
+            animateValue('trainingValue', insightsData.training, Math.max(0, newTraining));
+            animateValue('caloriesValue', insightsData.calories, Math.max(0, newCalories));
+            
+            insightsData.steps = Math.max(0, newSteps);
+            insightsData.training = Math.max(0, newTraining);
+            insightsData.calories = Math.max(0, newCalories);
+        }
+
+        // Update goal progress
+        function updateGoalProgress() {
+            const newProgress = Math.min(100, insightsData.goalProgress + Math.floor(Math.random() * 10));
+            insightsData.goalProgress = newProgress;
+            updateProgressCircle(newProgress);
+        }
+
+        // Highlight pie segment
+        function highlightSegment(type) {
+            const segments = document.querySelectorAll('.pie-segment');
+            segments.forEach(segment => {
+                if (segment.dataset.type === type) {
+                    segment.style.strokeWidth = '25';
+                    segment.style.filter = 'brightness(1.2)';
+                } else {
+                    segment.style.opacity = '0.5';
+                }
+            });
+        }
+
+        // Reset pie segments
+        function resetSegments() {
+            const segments = document.querySelectorAll('.pie-segment');
+            segments.forEach(segment => {
+                segment.style.strokeWidth = '20';
+                segment.style.opacity = '1';
+                segment.style.filter = 'none';
+            });
+        }
+
+        // Chat navigation
+        function handleChatKeypress(event) {
+            if (event.key === 'Enter') {
+                goToChat();
+            }
+        }
+
+        function goToChat() {
+            const input = document.getElementById('chatInput');
+            if (input.value.trim()) {
+                // Save message for chat page
+                localStorage.setItem('pendingChatMessage', input.value);
+            }
+            window.location.href = 'chat.html';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial progress
+            updateProgressCircle(insightsData.goalProgress);
+            
+            // Animate bars on load
+            setTimeout(animateBarChart, 500);
+        });
+    </script>
+</body>
+</html>

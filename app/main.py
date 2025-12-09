@@ -35,14 +35,101 @@ def create_app():
     # Register auth blueprint
     app.register_blueprint(auth_bp)
 
-    # Frontend routes
+    # Frontend routes - Prototype Pages
     @app.route('/')
     def index():
+        return render_template('index.html')
+    
+    @app.route('/login')
+    @app.route('/login.html')
+    def login():
         return render_template('login.html')
     
+    @app.route('/signup')
+    @app.route('/signup.html')
+    def signup():
+        return render_template('signup.html')
+    
     @app.route('/chat')
+    @app.route('/chat.html')
     def chat():
         return render_template('chat.html')
+    
+    @app.route('/dashboard')
+    @app.route('/dashboard.html')
+    def dashboard():
+        return render_template('dashboard.html')
+    
+    @app.route('/snapshot')
+    @app.route('/snapshot.html')
+    def snapshot():
+        return render_template('snapshot.html')
+    
+    @app.route('/workout-plan')
+    @app.route('/workout-plan.html')
+    def workout_plan():
+        return render_template('workout-plan.html')
+    
+    @app.route('/insights')
+    @app.route('/insights.html')
+    def insights():
+        return render_template('insights.html')
+    
+    # Dummy API endpoints for prototype interactivity
+    @app.route('/api/steps', methods=['GET', 'POST'])
+    def steps_api():
+        if request.method == 'POST':
+            data = request.get_json()
+            # Dummy response - in real app this would save to DB
+            return jsonify({
+                'success': True,
+                'steps': data.get('steps', 0),
+                'calories': int(data.get('steps', 0) * 0.04)
+            })
+        return jsonify({'steps': 7855, 'weekly_average': 8933, 'calories': 120})
+    
+    @app.route('/api/form-score', methods=['POST'])
+    def form_score_api():
+        # Simulate form analysis with random score
+        import random
+        score = round(random.uniform(6.0, 10.0), 1)
+        feedbacks = [
+            "Keep your back straight and your arm at a 90 degree angle!",
+            "Great form! Try to slow down the eccentric movement.",
+            "Watch your knee alignment during the lift.",
+            "Excellent posture! Focus on breathing rhythm.",
+            "Try to engage your core more throughout the movement."
+        ]
+        return jsonify({
+            'success': True,
+            'score': score,
+            'feedback': random.choice(feedbacks),
+            'rating': 'Excellent' if score >= 9 else 'Good' if score >= 7.5 else 'Fair' if score >= 6 else 'Needs Work'
+        })
+    
+    @app.route('/api/workout/complete', methods=['POST'])
+    def complete_workout_api():
+        data = request.get_json()
+        return jsonify({
+            'success': True,
+            'workout': data.get('workout'),
+            'message': 'Workout completed! Great job!'
+        })
+    
+    @app.route('/api/insights', methods=['GET'])
+    def insights_api():
+        import random
+        return jsonify({
+            'steps': random.randint(20000, 30000),
+            'training_minutes': random.randint(60, 120),
+            'goal_progress': random.randint(40, 70),
+            'workout_breakdown': {
+                'strength': 46,
+                'cardio': 18,
+                'hiit': 15,
+                'mobility': 21
+            }
+        })
     
     # API route for chat
     @app.route('/api/chat', methods=['POST'])
