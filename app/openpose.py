@@ -3,9 +3,9 @@ import os
 import numpy as np
 import exercise
 import time
+import mediapipe as mp
 
-
-# body parts and pose pairs for OpenPose
+# body parts and pose pairs for OpenPose (graph.opt)
 BODY_PARTS = { "Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
                "LShoulder": 5, "LElbow": 6, "LWrist": 7, "RHip": 8, "RKnee": 9,
                "RAnkle": 10, "LHip": 11, "LKnee": 12, "LAnkle": 13, "REye": 14,
@@ -23,10 +23,13 @@ POSE_PAIRS = [ ["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElb
                ["Neck", "Nose"], ["Nose", "REye"], ["REye", "REar"],
                ["Nose", "LEye"], ["LEye", "LEar"] ]
 
+# proto_file = "./app/models/pose_deploy.prototxt"
+# weights_file = "./app/models/pose_iter_440000.caffemodel"
+
 def generate_pose(file_path, joint_group, frame_vals):
 
     # load the pre-trained model
-    net = cv.dnn.readNetFromTensorflow("app/graph_opt.pb")
+    net = cv.dnn.readNetFromTensorflow("app/models/graph_opt.pb")
     thres = 0.3
 
     # read the video file and use opencv to gather width, height, fps
@@ -140,7 +143,7 @@ if __name__ == "__main__":
 
     frame_vals = {}
     joint_group_nums = []
-
+    
     for joint in left_bicep_curl.joint_group:
         joint_group_nums.append(exercise.BODY_PARTS[joint])
         frame_vals[joint] = {}

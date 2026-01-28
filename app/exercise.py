@@ -19,6 +19,7 @@ POSE_PAIRS = [ ["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElb
                ["Neck", "Nose"], ["Nose", "REye"], ["REye", "REar"],
                ["Nose", "LEye"], ["LEye", "LEar"] ]
 
+
 # Presets of ALL exercises within scope
 # Plan to map correctly by using same exercise variable names in frontend that can be passed
 # to backend and then therefore used correctly in object instantiation
