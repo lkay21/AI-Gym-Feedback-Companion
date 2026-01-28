@@ -27,8 +27,16 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "devkey")
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+    # Use instance folder for database
+    instance_path = os.path.join(project_root, 'app', 'instance')
+    os.makedirs(instance_path, exist_ok=True)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "users.db")}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Session configuration
+    app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours in seconds
+    app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
     db.init_app(app)
 
@@ -167,7 +175,7 @@ def main():
     app = create_app()
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
     
 
 if __name__ == "__main__":
