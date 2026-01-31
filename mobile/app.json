@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "AI Gym Feedback Companion",
+    "slug": "ai-gym-feedback-companion",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aigymfeedbackcompanion.app",
+      "jsEngine": "hermes"
+    },
+    "android": {
+      "package": "com.aigymfeedbackcompanion.app",
+      "jsEngine": "hermes"
+    },
+    "web": {},
+    "jsEngine": "hermes"
+  }
+}
