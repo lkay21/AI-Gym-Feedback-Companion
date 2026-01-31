@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from app.db_instance import db
 from app.auth_module.routes import auth_bp
+from app.profile_module.routes import profile_bp
 import google.generativeai as genai
 # from google import genai
 # from google.genai.types import GenerateContentConfig, HttpOptions
@@ -42,6 +43,9 @@ def create_app():
 
     # Register auth blueprint
     app.register_blueprint(auth_bp)
+    
+    # Register profile blueprint
+    app.register_blueprint(profile_bp)
 
     # Frontend routes
     @app.route('/')
