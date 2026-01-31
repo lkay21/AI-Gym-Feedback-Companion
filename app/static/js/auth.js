@@ -51,54 +51,31 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Re-attach event listener to new toggle link
         document.getElementById('toggle-link').addEventListener('click', arguments.callee);
-        clearErrors();
+        errorMessage.classList.remove('show');
     });
 
-    // Password toggle
-    if (passwordToggle) {
-        passwordToggle.addEventListener('click', function() {
-            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordField.setAttribute('type', type);
-        });
-    }
-
-    // Form validation
-    emailField.addEventListener('blur', function() {
-        if (isSignUpMode) {
-            validateEmail();
-        }
-    });
-
-    usernameField.addEventListener('blur', function() {
-        validateUsername();
-    });
-
-    passwordField.addEventListener('blur', function() {
-        validatePassword();
-    });
+    // Initialize as login mode
+    authPanel.classList.add('login-mode');
+    // Set initial state - email not required in login mode
+    emailField.required = false;
 
     // Form submission
     authForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        clearErrors();
+        errorMessage.classList.remove('show');
 
-        // Validate fields
-        let isValid = true;
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const email = document.getElementById('email').value;
 
-        if (isSignUpMode && !validateEmail()) {
-            isValid = false;
+        // Validate required fields
+        if (!username || !password) {
+            showError('Username and password are required');
+            return;
         }
 
-        if (!validateUsername()) {
-            isValid = false;
-        }
-
-        if (!validatePassword()) {
-            isValid = false;
-        }
-
-        if (!isValid) {
-            showToast('Please fix the errors above', 'error');
+        if (isSignUpMode && !email) {
+            showError('Please enter your email');
             return;
         }
 

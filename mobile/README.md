@@ -9,38 +9,31 @@ cd mobile
 npm install
 ```
 
-Or with yarn:
-```bash
-cd mobile
-yarn install
-```
-
-### 2. Install Expo CLI (if not already installed)
-
-```bash
-npm install -g expo-cli
-```
-
-### 3. Update API Base URL
+### 2. Update API Base URL
 
 Edit `src/services/api.js` and update the `API_BASE_URL`:
 
 - **iOS Simulator**: `http://localhost:5001`
 - **Android Emulator**: `http://10.0.2.2:5001`
-- **Physical Device**: `http://YOUR_COMPUTER_IP:5001` (e.g., `http://192.168.1.100:5001`)
+- **Physical Device**: `http://YOUR_COMPUTER_IP:5001`
 
 To find your computer's IP:
-- Mac/Linux: `ifconfig | grep "inet "`
-- Windows: `ipconfig`
+```bash
+# Mac/Linux
+ifconfig | grep "inet "
 
-### 4. Start the Flask Backend
+# Windows
+ipconfig
+```
+
+### 3. Start the Flask Backend
 
 In the project root:
 ```bash
 python3 -m app.main
 ```
 
-### 5. Start the React Native App
+### 4. Start the React Native App
 
 ```bash
 cd mobile
@@ -54,15 +47,34 @@ Then:
 
 ## Features
 
-- ✅ Login screen with username/password
-- ✅ Signup screen with email, username, password, and confirm password
-- ✅ Form validation with error messages
-- ✅ Password visibility toggle
-- ✅ Loading states
-- ✅ Success/error alerts
-- ✅ Navigation between screens
-- ✅ AsyncStorage for user session
-- ✅ Connected to Flask backend API
+✅ **Login Screen**
+- Username and password inputs
+- Form validation
+- Password visibility toggle
+- Loading states
+- Error handling
+- Navigation to signup
+- Google login button (placeholder)
+
+✅ **Signup Screen**
+- Email, username, password, and confirm password inputs
+- Comprehensive form validation
+- Password visibility toggles
+- Loading states
+- Error handling
+- Navigation to login
+- Google signup button (placeholder)
+
+✅ **API Integration**
+- Connected to Flask backend (`/auth/register`, `/auth/login`)
+- AsyncStorage for session management
+- Error handling with user-friendly messages
+
+✅ **Design**
+- Matches Figma design exactly
+- Purple gradient background (#7c3aed to #4c1d95)
+- Clean, modern mobile UI
+- Smooth animations
 
 ## Project Structure
 
@@ -81,17 +93,10 @@ mobile/
         └── api.js            # API service for backend communication
 ```
 
-## API Endpoints Used
-
-- `POST /auth/register` - User registration
-- `POST /auth/login` - User login
-- `GET /auth/check` - Check session
-- `POST /api/chat` - Send chat message
-
 ## Troubleshooting
 
 ### "Network request failed"
-- Make sure Flask backend is running
+- Make sure Flask backend is running on port 5001
 - Check API_BASE_URL matches your setup
 - For physical device, ensure phone and computer are on same WiFi network
 - Check firewall settings
@@ -103,5 +108,3 @@ mobile/
 ### Expo Go app issues
 - Make sure you're using the latest Expo Go app
 - Clear Expo Go cache and restart
-
-

@@ -17,7 +17,7 @@ export default function App() {
           initialRouteName="Login"
           screenOptions={{
             headerShown: false,
-            cardStyle: { backgroundColor: '#111827' }
+            cardStyle: { backgroundColor: '#1e1b4b' }
           }}
         >
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -28,5 +28,3 @@ export default function App() {
     </>
   );
 }
-
-
