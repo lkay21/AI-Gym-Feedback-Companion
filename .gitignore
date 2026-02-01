@@ -30,3 +30,7 @@ app/instance/
 .DS_Store
 Thumbs.db
 
+# Video files
+app/video_out/
+app/video_in/
+
