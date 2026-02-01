@@ -47,10 +47,12 @@ class Exercise:
         self.joint_group = joint_group
         self.isolated_movement = isolated_movement
 
-    def set_frame_values(self, frame_vals, frame_count, fps):
+    def set_frame_values(self, frame_vals, frame_count, fps, frame_width, frame_height):
         self.frame_vals= frame_vals     
         self.frame_count = frame_count     
         self.fps = fps
+        self.frame_width = frame_width
+        self.frame_height = frame_height
         self.x_metrics = {}
         self.y_metrics = {}
 
@@ -64,32 +66,39 @@ class Exercise:
 
         for joint in self.frame_vals.keys():
             x_positions = [val[0] for val in self.frame_vals[joint].values()]
-            smoothed_x = gaussian_filter1d(x_positions, sigma=2)
-            self.x_metrics[joint + " position"] = smoothed_x
+            # smoothed_x = gaussian_filter1d(x_positions, sigma=0.25)
+            normalized_x = [(x / self.frame_width) for x in x_positions]
+            # normalized_x = normalized_x - np.mean(normalized_x)
+            self.x_metrics[joint + " position"] = normalized_x
             self.x_metrics[joint + " velocity"] = np.gradient(self.x_metrics[joint + " position"], dt)
             self.x_metrics[joint + " acceleration"] = np.gradient(self.x_metrics[joint + " velocity"], dt)
 
 
             y_positions = [val[1] for val in self.frame_vals[joint].values()]
-            smoothed_y = gaussian_filter1d(y_positions, sigma=2)
-            self.y_metrics[joint + " position"] = smoothed_y
+            # smoothed_y = gaussian_filter1d(y_positions, sigma=0.25)
+            normalized_y = [(y / self.frame_height) for y in y_positions]
+            # normalized_y = normalized_y - np.mean(normalized_y)
+            self.y_metrics[joint + " position"] = normalized_y
             self.y_metrics[joint + " velocity"] = np.gradient(self.y_metrics[joint + " position"], dt)
             self.y_metrics[joint + " acceleration"] = np.gradient(self.y_metrics[joint + " velocity"], dt)
 
     def graph_metrics(self):
 
+        
         for joint in self.x_metrics.keys():
 
-            x = np.linspace(0, self.frame_count, len(self.x_metrics[joint]))
+            x = np.linspace(0, 1, len(self.x_metrics[joint]))
             plt.plot(x, self.x_metrics[joint], label=f'X {joint}')
+            plt.axis([0, 1, -1, 1])
             plt.title(f'{joint} X Metrics for {self.name}')
             plt.show()
 
 
         for joint in self.y_metrics.keys():
 
-            x = np.linspace(0, self.frame_count, len(self.y_metrics[joint]))
+            x = np.linspace(0, 1, len(self.y_metrics[joint]))
             plt.plot(x, self.y_metrics[joint], label=f'Y {joint}')
+            plt.axis([0, 1, 1, -1])
             plt.title(f'{joint} Y Metrics for {self.name}')
             plt.show()
 

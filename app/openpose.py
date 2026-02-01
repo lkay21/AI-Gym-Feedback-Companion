@@ -1,9 +1,12 @@
 import cv2 as cv
 import os
 import numpy as np
-import exercise
+import exercise as ex
 import time
 import mediapipe as mp
+from sklearn.metrics import root_mean_squared_error
+from scipy.interpolate import interp1d
+
 
 # body parts and pose pairs for OpenPose (graph.opt)
 BODY_PARTS = { "Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
@@ -133,39 +136,153 @@ def generate_pose(file_path, joint_group, frame_vals):
     out.release()
     cv.destroyAllWindows()
 
-    return frame_count, fps
+    return frame_count, fps, frame_width, frame_height
 
-if __name__ == "__main__":
-    left_bicep_curl = exercise.Exercise.from_preset("iso_left_bicep_curl")
+def FormScore(example_path, user_path, exercise):
+        
+    exercise_obj = ex.Exercise.from_preset(exercise)
+
+    print(f"\nCalculating FormScore for Exercise")
+    print(f"Exercise Name: {exercise_obj.name}"
+        f"\nIsolated Movement: {exercise_obj.isolated_movement}"
+        f"\nJoint Group: {exercise_obj.joint_group}\n")
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    video_path = os.path.join(script_dir, "video_in", "test.mp4")
 
-    frame_vals = {}
-    joint_group_nums = []
+    example_vid = os.path.join(script_dir, "video_in", example_path)
+    user_vid = os.path.join(script_dir, "video_in", user_path)
+
+    paths = [example_vid, user_vid]
+
+    example_xs, example_ys = {}, {}
+    user_xs, user_ys = {}, {}
+
+    for path in paths:
+
+        frame_vals = {}
+        joint_group_nums = []
+        
+        for joint in exercise_obj.joint_group:
+            joint_group_nums.append(BODY_PARTS[joint])
+            frame_vals[joint] = {}
+
+        start_time = time.time()
+        frame_count, fps, frame_width, frame_height = generate_pose(path, joint_group_nums, frame_vals)
+        end_time = time.time()
+
+        for key, val in frame_vals.items():
+            print(f"Initializing frame_vals for {key}: {val}")
+
+
+        print(f"Time taken for FormScore estimation: {end_time - start_time} seconds")
+
+        exercise_obj.set_frame_values(frame_vals, frame_count, fps, frame_width, frame_height)
+        # exercise_obj.graph_metrics()
+
+        if path == example_vid:
+            for joint in frame_vals.keys():
+                example_xs[joint] = exercise_obj.x_metrics[joint + " position"]
+                example_ys[joint] = exercise_obj.y_metrics[joint + " position"]
+                # print(f"Joint: {joint}")
+                # print(frame_vals[joint])
+                # print("\n")
+        elif path == user_vid:
+            for joint in frame_vals.keys():
+                user_xs[joint] = exercise_obj.x_metrics[joint + " position"]
+                user_ys[joint] = exercise_obj.y_metrics[joint + " position"]
+                # print(f"Joint: {joint}")
+                # print(frame_vals[joint])
+                # print("\n")
+
+    joint_scores = {}
+
+    print("\nCalculating Joint Scores:\n")
+
+    for joint in exercise_obj.joint_group:
+        example_x = example_xs[joint]
+        example_y = example_ys[joint]
+        user_x = user_xs[joint]
+        user_y = user_ys[joint]
+
+        common = np.linspace(0, 1, 1000)
+        interp_example_x = interp1d(np.linspace(0, 1, len(example_x)), example_x)
+        interp_user_x = interp1d(np.linspace(0, 1, len(user_x)), user_x)
+        resampled_example_x = interp_example_x(common)
+        resampled_user_x = interp_user_x(common)
+        mae_x = np.mean(np.abs(resampled_example_x - resampled_user_x))
+        score = 1 - mae_x
+        joint_scores[joint + " x"] = score
+        print(f"Joint: {joint} X Score: {score}")
+
+        interp_example_y = interp1d(np.linspace(0, 1, len(example_y)), example_y)
+        interp_user_y = interp1d(np.linspace(0, 1, len(user_y)), user_y)
+        resampled_example_y = interp_example_y(common)
+        resampled_user_y = interp_user_y(common)
+        mae_y = np.mean(np.abs(resampled_example_y - resampled_user_y))
+        score = 1 - mae_y
+        joint_scores[joint + " y"] = score
+        print(f"Joint: {joint} Y Score: {score}")
+
+    overall_score = np.mean(list(joint_scores.values()))
+
+    print(f"\nOverall Form Score for {exercise_obj.name}: {overall_score * 100} percent\n")
+
     
-    for joint in left_bicep_curl.joint_group:
-        joint_group_nums.append(exercise.BODY_PARTS[joint])
-        frame_vals[joint] = {}
 
-    for key, val in frame_vals.items():
-        print(f"Initializing frame_vals for {key}: {val}")
 
-    start_time = time.time()
-    frame_count, fps  = generate_pose(video_path, joint_group_nums, frame_vals)
-    end_time = time.time()
-
-    print(f"\nTime taken for pose estimation: {end_time - start_time} seconds")
-
-    print("\nFrames processed for pose estimation of video for Excercise")
-    print(f"Exercise Name: {left_bicep_curl.name}"
-        f"\nIsolated Movement: {left_bicep_curl.isolated_movement}"
-        f"\nJoint Group: {left_bicep_curl.joint_group}\n")
     
-    left_bicep_curl.set_frame_values(frame_vals, frame_count, fps)
-    left_bicep_curl.graph_metrics()
-    
-    for joint in frame_vals.keys():
-        print(f"Joint: {joint}")
-        print(frame_vals[joint])
-        print("\n")
+
+
+
+
+if __name__ == "__main__":
+
+    exercise_str = "bicep_curl"
+    example_vid = "example.mp4"
+    rename_vid = "rename.mp4"
+
+    FormScore(example_vid, rename_vid, exercise_str)
+
+    # left_bicep_curl = exercise.Exercise.from_preset("iso_left_bicep_curl")
+    # bicep_curl = exercise.Exercise.from_preset("bicep_curl")
+
+    # script_dir = os.path.dirname(os.path.abspath(__file__))
+    # video_path = os.path.join(script_dir, "video_in", "test.mp4")
+
+    # bicep_path = os.path.join(script_dir, "video_in", "rename.mp4")
+    # example_bicep_path = os.path.join(script_dir, "video_in", "example.mp4")
+
+    # paths = [example_bicep_path, bicep_path, video_path]
+    # exercises = [bicep_curl, bicep_curl, left_bicep_curl]
+
+
+    # for path, exercise in zip(paths, exercises):
+
+    #     frame_vals = {}
+    #     joint_group_nums = []
+        
+    #     for joint in exercise.joint_group:
+    #         joint_group_nums.append(BODY_PARTS[joint])
+    #         frame_vals[joint] = {}
+
+    #     for key, val in frame_vals.items():
+    #         print(f"Initializing frame_vals for {key}: {val}")
+
+    #     start_time = time.time()
+    #     frame_count, fps, frame_width, frame_height  = generate_pose(path, joint_group_nums, frame_vals)
+    #     end_time = time.time()
+
+    #     print(f"\nTime taken for pose estimation: {end_time - start_time} seconds")
+
+    #     print("\nFrames processed for pose estimation of video for Excercise")
+    #     print(f"Exercise Name: {exercise.name}"
+    #         f"\nIsolated Movement: {exercise.isolated_movement}"
+    #         f"\nJoint Group: {exercise.joint_group}\n")
+        
+    #     exercise.set_frame_values(frame_vals, frame_count, fps, frame_width, frame_height)
+    #     exercise.graph_metrics()
+
+    #     for joint in frame_vals.keys():
+    #         print(f"Joint: {joint}")
+    #         print(frame_vals[joint])
+    #         print("\n")
