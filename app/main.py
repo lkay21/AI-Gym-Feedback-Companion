@@ -5,6 +5,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from app.db_instance import db
 from app.auth_module.routes import auth_bp
+from app.profile_module.routes import profile_bp
 from app.auth_module.models import User  # Import User model so tables are created
 import google.generativeai as genai
 # from google import genai
@@ -60,6 +61,9 @@ def create_app():
 
     # Register auth blueprint
     app.register_blueprint(auth_bp)
+    
+    # Register profile blueprint
+    app.register_blueprint(profile_bp)
 
     # Frontend routes
     @app.route('/')
