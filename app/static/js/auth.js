@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize as login mode
     authPanel.classList.add('login-mode');
+    // Set initial state - email not required in login mode
+    emailField.required = false;
 
     // Form submission
     authForm.addEventListener('submit', async function(e) {
@@ -44,6 +46,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         const email = document.getElementById('email').value;
+
+        // Validate required fields
+        if (!username || !password) {
+            showError('Username and password are required');
+            return;
+        }
 
         if (isSignUpMode && !email) {
             showError('Please enter your email');
