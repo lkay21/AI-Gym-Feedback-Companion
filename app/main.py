@@ -2,9 +2,12 @@ import os
 from pathlib import Path
 from flask import Flask, render_template
 from flask_cors import CORS
+from flask_cors import CORS
 from dotenv import load_dotenv
 from app.db_instance import db
 from app.auth_module.routes import auth_bp
+from app.profile_module.routes import profile_bp
+from app.auth_module.models import User  # Import User model so tables are created
 from app.chat_module.routes import chat_bp
 
 # Get Info From ENV - Load from project root
@@ -56,6 +59,9 @@ def create_app():
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
+    
+    # Register profile blueprint
+    app.register_blueprint(profile_bp)
 
     # Frontend routes
     @app.route('/')
