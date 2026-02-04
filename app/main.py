@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 from app.db_instance import db
 from app.auth_module.routes import auth_bp
+from app.auth_module.models import User  # Import User model so tables are created
 import google.generativeai as genai
 # from google import genai
 # from google.genai.types import GenerateContentConfig, HttpOptions
@@ -37,6 +39,22 @@ def create_app():
     app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+    # Enable CORS for React Native web and mobile apps
+    CORS(app, resources={
+        r"/auth/*": {
+            "origins": ["http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081", "http://127.0.0.1:19006"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        },
+        r"/api/*": {
+            "origins": ["http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081", "http://127.0.0.1:19006"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        }
+    })
 
     db.init_app(app)
 
