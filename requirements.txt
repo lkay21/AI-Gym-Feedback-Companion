@@ -8,5 +8,4 @@ opencv-python
 numpy
 mediapipe
 scikit-learn    
-supabase==2.3.4
 supabase>=2.27.2
