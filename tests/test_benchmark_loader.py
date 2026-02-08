@@ -8,7 +8,7 @@ Tests cover:
 """
 
 import unittest
-from app.fitness.benchmark_loader import load_fitness_benchmarks
+from app.fitness.benchmark_loader import load_fitness_benchmarks, _normalize_categories
 
 
 class TestBenchmarkLoading(unittest.TestCase):
@@ -19,6 +19,14 @@ class TestBenchmarkLoading(unittest.TestCase):
         benchmarks = load_fitness_benchmarks()
         
         self.assertIsInstance(benchmarks, dict)
+
+    def test_load_benchmarks_category_values_are_dicts(self):
+        """Test that each category value is a dict for predictable structure."""
+        benchmarks = load_fitness_benchmarks()
+
+        for category, data in benchmarks.items():
+            self.assertIsInstance(category, str)
+            self.assertIsInstance(data, dict)
     
     def test_benchmarks_contains_main_categories(self):
         """Test that benchmarks contain main fitness categories."""
@@ -179,6 +187,42 @@ class TestBenchmarkLoadingErrorHandling(unittest.TestCase):
             benchmarks1['strength']['male']['age_20_30']['bench_press_lbs'],
             benchmarks2['strength']['male']['age_20_30']['bench_press_lbs']
         )
+
+
+class TestBenchmarkNormalization(unittest.TestCase):
+    """Test normalization and graceful handling of invalid data."""
+
+    def test_normalize_invalid_raw_returns_empty(self):
+        """Test invalid raw input returns empty dict."""
+        self.assertEqual(_normalize_categories(None), {})
+        self.assertEqual(_normalize_categories([]), {})
+        self.assertEqual(_normalize_categories("invalid"), {})
+
+    def test_normalize_skips_invalid_categories(self):
+        """Test categories with invalid keys or values are skipped."""
+        raw = {
+            "strength": {"valid": True},
+            "": {"invalid": True},
+            123: {"invalid": True},
+            "cardio": "not-a-dict"
+        }
+
+        normalized = _normalize_categories(raw)
+
+        self.assertIn("strength", normalized)
+        self.assertNotIn("", normalized)
+        self.assertNotIn(123, normalized)
+        self.assertNotIn("cardio", normalized)
+
+    def test_normalize_preserves_valid_categories(self):
+        """Test valid category data is preserved."""
+        raw = {
+            "flexibility": {"sit_and_reach_cm": {"good": 17}}
+        }
+
+        normalized = _normalize_categories(raw)
+
+        self.assertEqual(normalized, raw)
 
 
 class TestBenchmarkAccessPatterns(unittest.TestCase):
