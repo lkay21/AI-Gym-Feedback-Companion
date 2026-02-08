@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from flask import Flask, render_template
 from flask_cors import CORS
-from flask_cors import CORS
 from dotenv import load_dotenv
 from app.db_instance import db
 from app.auth_module.routes import auth_bp
