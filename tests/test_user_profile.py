@@ -4,8 +4,10 @@ Unit tests for the UserProfile model.
 Tests cover:
 - UserProfile creation and attributes
 - from_dict() factory method
+- create() and update() methods
 - String representation
 - Field validation
+- Extensibility fields
 """
 
 import unittest
@@ -192,6 +194,70 @@ class TestUserProfileFitnessGoals(unittest.TestCase):
         self.assertEqual(profile.fitness_goals, [])
 
 
+class TestUserProfileCreateAndUpdate(unittest.TestCase):
+    """Test create() and update() behavior."""
+
+    def test_create_requires_name(self):
+        """Test create() validates name presence and type."""
+        with self.assertRaises(ValueError):
+            UserProfile.create({})
+        with self.assertRaises(ValueError):
+            UserProfile.create({'name': 123})
+
+        profile = UserProfile.create({'name': 'Nina'})
+        self.assertEqual(profile.name, 'Nina')
+
+    def test_update_basic_fields(self):
+        """Test update() updates mutable fields."""
+        profile = UserProfile(name="Owen", age=22)
+
+        profile.update({
+            'age': 23,
+            'gender': 'male',
+            'height': '5\'8"',
+            'weight': '160 lbs',
+            'fitness_goals': ['strength']
+        })
+
+        self.assertEqual(profile.age, 23)
+        self.assertEqual(profile.gender, 'male')
+        self.assertEqual(profile.height, '5\'8"')
+        self.assertEqual(profile.weight, '160 lbs')
+        self.assertEqual(profile.fitness_goals, ['strength'])
+
+    def test_update_extensibility_fields(self):
+        """Test update() for exercise_history and benchmarks."""
+        profile = UserProfile(name="Paul")
+
+        history = [{'type': 'run', 'minutes': 30}]
+        benchmarks = {'squat': '200 lbs'}
+
+        profile.update({
+            'exercise_history': history,
+            'benchmarks': benchmarks
+        })
+
+        self.assertEqual(profile.exercise_history, history)
+        self.assertEqual(profile.benchmarks, benchmarks)
+
+    def test_update_validation(self):
+        """Test update() validation errors."""
+        profile = UserProfile(name="Quinn")
+
+        with self.assertRaises(ValueError):
+            profile.update({'age': 0})
+        with self.assertRaises(ValueError):
+            profile.update({'age': -1})
+        with self.assertRaises(ValueError):
+            profile.update({'name': 123})
+        with self.assertRaises(ValueError):
+            profile.update({'fitness_goals': 'not-a-list'})
+        with self.assertRaises(ValueError):
+            profile.update({'exercise_history': 'not-a-list'})
+        with self.assertRaises(ValueError):
+            profile.update({'benchmarks': 'not-a-dict'})
+
+
 class TestUserProfileDataTypes(unittest.TestCase):
     """Test UserProfile with various data types."""
     
@@ -217,6 +283,39 @@ class TestUserProfileDataTypes(unittest.TestCase):
         
         self.assertIsInstance(profile.fitness_goals, list)
         self.assertEqual(len(profile.fitness_goals), 3)
+
+
+class TestUserProfileValidationAndExtensibility(unittest.TestCase):
+    """Test validation and extensible fields defaults."""
+
+    def test_invalid_age_raises(self):
+        """Test that invalid ages raise ValueError."""
+        with self.assertRaises(ValueError):
+            UserProfile(name="Mia", age=0)
+        with self.assertRaises(ValueError):
+            UserProfile(name="Mia", age=-5)
+        with self.assertRaises(ValueError):
+            UserProfile(name="Mia", age="twenty")
+
+    def test_extensibility_fields_defaults(self):
+        """Test exercise_history and benchmarks defaults."""
+        profile = UserProfile(name="Nora")
+
+        self.assertEqual(profile.exercise_history, [])
+        self.assertEqual(profile.benchmarks, {})
+
+    def test_from_dict_extensibility_fields(self):
+        """Test from_dict supports extensibility fields."""
+        data = {
+            'name': 'Omar',
+            'exercise_history': [{'type': 'bike', 'minutes': 20}],
+            'benchmarks': {'deadlift': '250 lbs'}
+        }
+
+        profile = UserProfile.from_dict(data)
+
+        self.assertEqual(profile.exercise_history, [{'type': 'bike', 'minutes': 20}])
+        self.assertEqual(profile.benchmarks, {'deadlift': '250 lbs'})
 
 
 if __name__ == "__main__":
