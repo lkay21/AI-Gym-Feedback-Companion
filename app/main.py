@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
-from flask import Flask, render_template
-from flask_cors import CORS
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from app.db_instance import db
@@ -24,6 +23,8 @@ if env_path.exists():
 else:
     # Fallback: try current directory
     load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Configures Flask application (initializes with configuration settings,
 # sets up database, registers any blueprints)
