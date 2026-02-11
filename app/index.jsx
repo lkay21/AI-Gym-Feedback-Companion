@@ -1,31 +1,21 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
+
 import { Calendar } from "react-native-calendars";
-
-
-// export default function Index() {
-
-//     return (
-//         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-//             <Text>Welcome to the AI Gym Feedback Companion!</Text>
-//         </View>
-//     )
-
-// }
-
+import { router } from "expo-router";
 
 /**
  * Workouts keyed by ISO date (YYYY-MM-DD).
@@ -137,7 +127,7 @@ export default function Index() {
     const trimmed = prompt.trim();
     if (!trimmed) return;
 
-    // Later: send to your chat endpoint
+    // Later: send to chat endpoint
     // For now: clear the input
     setPrompt("");
   };
@@ -154,8 +144,23 @@ export default function Index() {
           style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
+          {/* Header with navigation button */}
           <View style={styles.header}>
             <Text style={styles.title}>Workout Plan</Text>
+
+            <Pressable
+              onPress={() => router.push("/chatbot")}
+              style={styles.chatNavBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Go to Chatbot"
+            >
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={18}
+                color="#fff"
+              />
+              <Text style={styles.chatNavText}>Chatbot</Text>
+            </Pressable>
           </View>
 
           <FlatList
@@ -168,14 +173,11 @@ export default function Index() {
 
                 <View style={styles.calendarWrap}>
                   <Calendar
-                    // Calendar arrows are enabled by default
-                    // You can set an initial month:
                     current={"2025-12-01"}
                     markedDates={markedDates}
                     onDayPress={(day) => setSelectedDate(day.dateString)}
                     onMonthChange={(m) => {
-                      // optional: you can use this if you want to fetch month data
-                      // m.dateString is like "2025-12-01"
+                      // optional: fetch month data
                     }}
                     theme={{
                       backgroundColor: "transparent",
@@ -239,7 +241,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 10,
     paddingBottom: 8,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
   title: {
     color: "#fff",
@@ -247,9 +251,26 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
+  chatNavBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  chatNavText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
   listContent: {
     paddingHorizontal: 18,
-    paddingBottom: 120, // keep content above the prompt bar
+    paddingBottom: 120,
   },
 
   sectionLabel: {
