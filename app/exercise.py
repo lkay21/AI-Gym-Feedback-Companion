@@ -39,6 +39,11 @@ EXERCISE_PRESETS = {
         "isolated_movement": False,
         "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
     },
+    "lateral_raise": {
+        "name": "Lateral Raise",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder","RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
 }
 
 class Exercise:
