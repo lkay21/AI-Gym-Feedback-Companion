@@ -29,15 +29,17 @@ POSE_PAIRS = [ ["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElb
 
 EXERCISES = ["bicep_curl", "lateral_raise"]
 
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(APP_DIR)
+APP_DATA_DIR = os.path.join(APP_DIR, "exercise_data")
+
 # proto_file = "./app/models/pose_deploy.prototxt"
 # weights_file = "./app/models/pose_iter_440000.caffemodel"
 
 def generate_pose(file_path, joint_group, frame_vals):
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
     # load the pre-trained model
-    net = cv.dnn.readNetFromTensorflow(os.path.join(script_dir, "models", "graph_opt.pb"))
+    net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
     thres = 0.3
 
     # read the video file and use opencv to gather width, height, fps
@@ -51,7 +53,7 @@ def generate_pose(file_path, joint_group, frame_vals):
     fourcc = cv.VideoWriter_fourcc(*'avc1')
 
     # directory to save output video and create output video writer (actual video work)
-    output_path = os.path.join(script_dir, 'video_out', os.path.basename(file_path))
+    output_path = os.path.join(APP_DIR, 'video_out', os.path.basename(file_path))
     # output_path = os.path.join('static', 'pose_videos', os.path.basename(file_path))
 
     print(f"Output video will be saved to: {output_path}")
@@ -149,7 +151,6 @@ def generate_pose(file_path, joint_group, frame_vals):
     return frame_count, fps, frame_width, frame_height
 
 def fetch_standard_data(joint, axis, exercise_name):
-
     output_data = []
     # raw_data = {}
 
@@ -158,7 +159,7 @@ def fetch_standard_data(joint, axis, exercise_name):
 
     folder_name = f"{exercise_name}"
     folder_name = folder_name.replace(" ", "_").lower()
-    output_path = os.path.join('exercise_data', folder_name)
+    output_path = os.path.join(APP_DATA_DIR, folder_name)
     file_name = f"{exercise_name}_{joint}".replace(" ", "_").lower()
     vid_file_name = f"{exercise_name}_video_params".replace(" ", "_").lower()
 
@@ -204,10 +205,8 @@ def FormScore(example_path, user_path, exercise):
         f"\nIsolated Movement: {exercise_obj.isolated_movement}"
         f"\nJoint Group: {exercise_obj.joint_group}\n")
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    example_vid = os.path.join(script_dir, "video_in", example_path)
-    user_vid = os.path.join(script_dir, "video_in", user_path)
+    example_vid = os.path.join(APP_DIR, "video_in", example_path)
+    user_vid = os.path.join(APP_DIR, "video_in", user_path)
 
     example_xs, example_ys = {}, {}
     user_xs, user_ys = {}, {}
@@ -282,8 +281,7 @@ def get_standard_pose(example_path, exercise):
 
     exercise_obj = ex.Exercise.from_preset(exercise)
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    example_vid = os.path.join(script_dir, "video_in", example_path)
+    example_vid = os.path.join(APP_DIR, "video_in", example_path)
 
     frame_vals = {}
     joint_group_nums = []
@@ -308,7 +306,7 @@ def get_standard_pose(example_path, exercise):
 
     folder_name = f"{exercise_obj.name}"
     folder_name = folder_name.replace(" ", "_").lower()
-    output_path = os.path.join('exercise_data', folder_name)
+    output_path = os.path.join(APP_DATA_DIR, folder_name)
 
     if os.path.exists(output_path):
         shutil.rmtree(output_path)
@@ -343,12 +341,13 @@ if __name__ == "__main__":
     example_vid = "example.mp4"
     example_vid_2 = "lat_raise_stand.mp4"
     rename_vid = "rename.mp4"
-    rename_vid_2 = "lat_raise_bad.mp4"
-
-    # get_standard_pose(example_vid, exercise_str)
-    # get_standard_pose(example_vid_2, exercise_str_2)
+    rename_vid_2 = "lat_raise_good.mp4"
+    
+    get_standard_pose(example_vid, exercise_str)
+    get_standard_pose(example_vid_2, exercise_str_2)
 
     FormScore(example_vid, rename_vid, exercise_str)
+
     FormScore(example_vid_2, rename_vid_2, exercise_str_2)
 
     # fetch_standard_data("RWrist", "x", exercise_str)
