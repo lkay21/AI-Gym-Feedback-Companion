@@ -1,2 +1,2 @@
-# Chat module for AI chatbot functionality
+# Deprecated: use app.chatbot package instead.
 

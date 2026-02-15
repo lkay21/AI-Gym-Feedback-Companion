@@ -8,7 +8,7 @@ from app.db_instance import db
 from app.auth_module.routes import auth_bp
 from app.profile_module.routes import profile_bp
 from app.auth_module.models import User  # Import User model so tables are created
-from app.chat_module.routes import chat_bp
+from app.chatbot.routes import chat_bp
 
 # Get Info From ENV - Load from project root
 # Get the project root directory (parent of app directory)
