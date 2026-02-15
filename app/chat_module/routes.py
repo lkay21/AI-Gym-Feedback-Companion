@@ -4,6 +4,7 @@ API routes for chatbot functionality
 from flask import Blueprint, request, jsonify, session
 from typing import Dict, Any, Optional, Tuple
 from app.chat_module.gemini_client import GeminiClient
+from app.fitness.plan_transformer import mapLLMPlanToStructuredPlan, PlanParseError
 
 chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
 
@@ -25,6 +26,19 @@ def validate_chat_request(data: Dict[str, Any]) -> Tuple[bool, str]:
     if len(message) > 2000:
         return False, "Message is too long (max 2000 characters)"
     
+    return True, None
+
+
+def validate_plan_request(data: Dict[str, Any]) -> Tuple[bool, str]:
+    """Validate plan generation request"""
+    is_valid, error_msg = validate_chat_request(data)
+    if not is_valid:
+        return is_valid, error_msg
+
+    start_date = data.get('startDate', '').strip() if isinstance(data, dict) else ''
+    if not start_date:
+        return False, "startDate is required"
+
     return True, None
 
 
@@ -99,6 +113,71 @@ def chat():
                 'details': error_message
             }), 500
         
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': 'An unexpected error occurred',
+            'details': str(e)
+        }), 500
+
+
+@chat_bp.route('/plan', methods=['POST'])
+def generate_plan():
+    """
+    Generate a structured fitness plan from the LLM response.
+
+    Request body:
+    {
+        "message": "prompt to generate plan",
+        "conversation_history": [],
+        "profile": {},
+        "startDate": "YYYY-MM-DD"
+    }
+    """
+    try:
+        data = request.get_json()
+        is_valid, error_msg = validate_plan_request(data)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+
+        message = data.get('message', '').strip()
+        conversation_history = data.get('conversation_history', [])
+        user_profile = data.get('profile', {})
+        start_date = data.get('startDate')
+
+        try:
+            gemini_client = GeminiClient()
+        except ValueError as e:
+            return jsonify({
+                'error': 'AI service is not configured properly',
+                'details': str(e)
+            }), 500
+
+        try:
+            response_text = gemini_client.generate_response(
+                user_message=message,
+                conversation_history=conversation_history,
+                user_profile=user_profile
+            )
+
+            structured_plan = mapLLMPlanToStructuredPlan(response_text, start_date)
+
+            return jsonify({
+                'response': response_text,
+                'structuredPlan': structured_plan,
+                'success': True
+            }), 200
+        except PlanParseError as e:
+            return jsonify({
+                'error': 'Failed to parse fitness plan',
+                'details': str(e)
+            }), 500
+        except Exception as e:
+            return jsonify({
+                'error': 'Failed to generate fitness plan',
+                'details': str(e)
+            }), 500
     except Exception as e:
         import traceback
         traceback.print_exc()

@@ -101,6 +101,13 @@ export const chatAPI = {
       profile,
     });
   },
+  generatePlan: async (message, profile = {}, startDate) => {
+    return await apiRequest('POST', '/api/chat/plan', {
+      message,
+      profile,
+      startDate,
+    });
+  },
 };
 
 export default { request: apiRequest };
