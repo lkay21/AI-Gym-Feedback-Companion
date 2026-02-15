@@ -6,9 +6,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from openai import APIConnectionError, APIError, APITimeoutError, OpenAI, RateLimitError
+from app.chatbot.types import FitnessPlan
 
 
 logger = logging.getLogger(__name__)
@@ -44,11 +45,12 @@ def generate_llm_response(
     context = context or []
     metadata = metadata or {}
     schema = metadata.get("schema")
+    expect_fitness_plan = metadata.get("expectFitnessPlan", False)
 
     messages = _build_messages(prompt, context)
     client = OpenAI(api_key=api_key)
 
-    raw = _call_openai(client, model_name, messages)
+    raw, usage = _call_openai(client, model_name, messages)
     if raw is None:
         return _error("Failed to generate AI response", raw=None)
 
@@ -56,7 +58,7 @@ def generate_llm_response(
     if parsed is None:
         retry_prompt = f"{prompt}\n\nReturn ONLY valid JSON."
         retry_messages = _build_messages(retry_prompt, context)
-        raw_retry = _call_openai(client, model_name, retry_messages)
+        raw_retry, usage = _call_openai(client, model_name, retry_messages)
         if raw_retry is None:
             return _error("Failed to generate AI response", raw=None)
 
@@ -68,9 +70,16 @@ def generate_llm_response(
     if not _validate_schema(parsed, schema):
         return _error("Response does not match expected schema", raw=raw)
 
+    if expect_fitness_plan:
+        try:
+            validateFitnessPlanSchema(parsed)
+        except ValueError as exc:
+            logger.error("Validation error: %s", exc)
+            return _error(str(exc), raw=raw)
+
     return {
         "success": True,
-        "data": parsed,
+        "data": cast(FitnessPlan, parsed) if expect_fitness_plan else parsed,
         "error": None,
         "raw": raw,
     }
@@ -87,8 +96,13 @@ def _build_messages(prompt: str, context: List[Dict[str, str]]) -> List[Dict[str
     return messages
 
 
-def _call_openai(client: OpenAI, model_name: str, messages: List[Dict[str, str]]) -> Optional[str]:
+def _call_openai(
+    client: OpenAI,
+    model_name: str,
+    messages: List[Dict[str, str]],
+) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
     try:
+        logger.info("OpenAI model used: %s", model_name)
         response = client.chat.completions.create(
             model=model_name,
             messages=messages,
@@ -96,16 +110,24 @@ def _call_openai(client: OpenAI, model_name: str, messages: List[Dict[str, str]]
             response_format={"type": "json_object"},
         )
         content = response.choices[0].message.content if response.choices else None
-        return content.strip() if content else None
+        usage = None
+        if hasattr(response, "usage") and response.usage:
+            usage = {
+                "prompt_tokens": getattr(response.usage, "prompt_tokens", None),
+                "completion_tokens": getattr(response.usage, "completion_tokens", None),
+                "total_tokens": getattr(response.usage, "total_tokens", None),
+            }
+            logger.info("OpenAI token usage: %s", usage)
+        return content.strip() if content else None, usage
     except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
         logger.error("OpenAI network error: %s", exc)
-        return None
+        return None, None
     except APIError as exc:
         logger.error("OpenAI API error: %s", exc)
-        return None
+        return None, None
     except Exception as exc:
         logger.error("Unexpected OpenAI error: %s", exc)
-        return None
+        return None, None
 
 
 def _parse_json(raw: str) -> Optional[Dict[str, Any]]:
@@ -163,3 +185,93 @@ def _error(message: str, raw: Optional[str]) -> Dict[str, Any]:
         "error": message,
         "raw": raw,
     }
+
+
+def validateFitnessPlanSchema(data: Any) -> Dict[str, Any]:
+    """
+    Validate the expected fitness plan schema.
+
+    Returns:
+        {"valid": bool, "errors": list}
+
+    Raises:
+        ValueError: if invalid, with a descriptive error message.
+    """
+    errors: List[str] = []
+
+    if not isinstance(data, dict):
+        errors.append("Plan payload must be an object")
+        return _raise_or_return(errors)
+
+    plan_name = data.get("planName")
+    if not isinstance(plan_name, str) or not plan_name.strip():
+        errors.append("planName must be a non-empty string")
+
+    weeks = data.get("weeks")
+    if not isinstance(weeks, list) or not weeks:
+        errors.append("weeks must be a non-empty array")
+        return _raise_or_return(errors)
+
+    for w_index, week in enumerate(weeks):
+        if not isinstance(week, dict):
+            errors.append(f"weeks[{w_index}] must be an object")
+            continue
+
+        if not isinstance(week.get("weekNumber"), (int, float)):
+            errors.append(f"weeks[{w_index}].weekNumber must be a number")
+
+        days = week.get("days")
+        if not isinstance(days, list):
+            errors.append(f"weeks[{w_index}].days must be an array")
+            continue
+
+        for d_index, day in enumerate(days):
+            if not isinstance(day, dict):
+                errors.append(f"weeks[{w_index}].days[{d_index}] must be an object")
+                continue
+
+            workout_type = day.get("workoutType")
+            if not isinstance(workout_type, str) or not workout_type.strip():
+                errors.append(f"weeks[{w_index}].days[{d_index}].workoutType must be a non-empty string")
+
+            exercises = day.get("exercises")
+            if not isinstance(exercises, list):
+                errors.append(f"weeks[{w_index}].days[{d_index}].exercises must be an array")
+                continue
+
+            for e_index, exercise in enumerate(exercises):
+                if not isinstance(exercise, dict):
+                    errors.append(
+                        f"weeks[{w_index}].days[{d_index}].exercises[{e_index}] must be an object"
+                    )
+                    continue
+
+                name = exercise.get("name")
+                if not isinstance(name, str) or not name.strip():
+                    errors.append(
+                        f"weeks[{w_index}].days[{d_index}].exercises[{e_index}].name must be a non-empty string"
+                    )
+
+                if not isinstance(exercise.get("sets"), (int, float)):
+                    errors.append(
+                        f"weeks[{w_index}].days[{d_index}].exercises[{e_index}].sets must be a number"
+                    )
+
+                if not isinstance(exercise.get("reps"), (int, float)):
+                    errors.append(
+                        f"weeks[{w_index}].days[{d_index}].exercises[{e_index}].reps must be a number"
+                    )
+
+                weight = exercise.get("weight")
+                if not isinstance(weight, str):
+                    errors.append(
+                        f"weeks[{w_index}].days[{d_index}].exercises[{e_index}].weight must be a string"
+                    )
+
+    return _raise_or_return(errors)
+
+
+def _raise_or_return(errors: List[str]) -> Dict[str, Any]:
+    if errors:
+        raise ValueError("; ".join(errors))
+    return {"valid": True, "errors": []}
