@@ -68,13 +68,9 @@ def check_dynamodb():
             if table.item_count > 0:
                 response = table.scan(Limit=10)
                 items = response.get('Items', [])
-                print(f"\n  Profiles ({len(items)} shown):")
+                print(f"\n  Profiles ({len(items)} shown) – user_id only; health data is in health_data table:")
                 for item in items:
                     print(f"    - User ID: {item.get('user_id')}")
-                    print(f"      Age: {item.get('age', 'N/A')}")
-                    print(f"      Height: {item.get('height', 'N/A')}")
-                    print(f"      Weight: {item.get('weight', 'N/A')}")
-                    print(f"      Fitness Goals: {item.get('fitness_goals', [])}")
                     print()
             else:
                 print("  No profiles found")
@@ -102,10 +98,13 @@ def check_dynamodb():
                 items = response.get('Items', [])
                 print(f"\n  Health Data Entries ({len(items)} shown):")
                 for item in items:
-                    print(f"    - User ID: {item.get('user_id')}")
-                    print(f"      Timestamp: {item.get('timestamp')}")
-                    print(f"      Workout Type: {item.get('workout_type', 'N/A')}")
-                    print(f"      Duration: {item.get('duration_minutes', 'N/A')} minutes")
+                    print(f"    - User ID: {item.get('user_id')}, Timestamp: {item.get('timestamp')}")
+                    if item.get('age') is not None: print(f"      Age: {item.get('age')}")
+                    if item.get('height') is not None: print(f"      Height: {item.get('height')}")
+                    if item.get('weight') is not None: print(f"      Weight: {item.get('weight')}")
+                    if item.get('gender'): print(f"      Gender: {item.get('gender')}")
+                    if item.get('fitness_goal'): print(f"      Fitness goal: {item.get('fitness_goal')}")
+                    if item.get('context'): print(f"      Context: (stored)")
                     print()
             else:
                 print("  No health data entries found")

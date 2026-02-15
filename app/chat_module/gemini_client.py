@@ -2,6 +2,7 @@
 Google Gemini API client for chatbot responses
 """
 import os
+import json
 import google.generativeai as genai
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
@@ -157,4 +158,50 @@ class GeminiClient:
         if context_parts:
             return "User Profile Information:\n" + "\n".join(f"- {part}" for part in context_parts) + "\n"
         return ""
+
+    def build_fixed_stats_intro(self, health_data: Optional[Dict[str, Any]]) -> str:
+        """Build intro from HealthData fixed fields (age, height, weight, gender)."""
+        parts = ["Here's what I have on file for you:\n"]
+        if health_data:
+            if health_data.get('age') is not None:
+                parts.append(f"- Age: {health_data['age']}")
+            if health_data.get('height') is not None:
+                parts.append(f"- Height: {health_data['height']}")
+            if health_data.get('weight') is not None:
+                parts.append(f"- Weight: {health_data['weight']}")
+            if health_data.get('gender'):
+                parts.append(f"- Gender: {health_data['gender']}")
+        if len(parts) == 1:
+            parts[0] = "I'd like to tailor advice to you.\n"
+        parts.append("\nWhat is your main fitness goal right now? (e.g. lose weight, build muscle, improve endurance)")
+        return "\n".join(parts)
+
+    def generate_follow_up_questions(self, fitness_goal: str, count: int = 3) -> List[str]:
+        """Generate 2-3 follow-up questions tailored to the user's fitness goal."""
+        prompt = (
+            f"The user has stated their fitness goal: \"{fitness_goal}\". "
+            f"Generate exactly {min(count, 3)} short, specific follow-up questions to better understand their situation and tailor advice. "
+            "Each question should be one sentence, conversational, and relevant to their goal (e.g. experience level, constraints, preferences). "
+            "Return ONLY a JSON array of strings, e.g. [\"Question 1?\", \"Question 2?\", \"Question 3?\"] with no other text."
+        )
+        try:
+            response = self.model.generate_content(
+                contents=prompt,
+                generation_config={'temperature': 0.6, 'max_output_tokens': 512}
+            )
+            text = response.text.strip() if hasattr(response, 'text') and response.text else ""
+            if not text and hasattr(response, 'candidates') and response.candidates:
+                text = response.candidates[0].content.parts[0].text.strip()
+            if "```" in text:
+                text = text.split("```")[1].replace("json", "").strip()
+            questions = json.loads(text)
+            if isinstance(questions, list) and len(questions) >= 1:
+                return questions[:3]
+            return []
+        except (json.JSONDecodeError, ValueError):
+            return [
+                "How many days per week can you dedicate to exercise?",
+                "Do you have any injuries or limitations I should know about?",
+                "What type of activities do you enjoy most?",
+            ]
 
