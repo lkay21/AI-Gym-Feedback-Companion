@@ -174,17 +174,14 @@ def create_health_data():
         health_data = HealthData(
             user_id=user_id,
             timestamp=timestamp,
-            workout_type=data.get('workout_type'),
-            duration_minutes=data.get('duration_minutes'),
-            calories_burned=data.get('calories_burned'),
-            heart_rate_avg=data.get('heart_rate_avg'),
-            heart_rate_max=data.get('heart_rate_max'),
-            distance=data.get('distance'),
-            sets=data.get('sets'),
-            reps=data.get('reps'),
-            weight_lifted=data.get('weight_lifted'),
-            notes=data.get('notes'),
-            activity_metrics=data.get('activity_metrics', {})
+            # Fixed health data fields
+            age=data.get('age'),
+            height=data.get('height'),
+            weight=data.get('weight'),
+            gender=data.get('gender'),
+            fitness_goal=data.get('fitness_goal'),
+            # Context field for fitness-goal-specific Q&A
+            context=data.get('context', {})  # Can be dict with Q&A pairs
         )
         
         service = HealthDataService()
