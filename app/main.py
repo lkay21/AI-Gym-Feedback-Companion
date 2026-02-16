@@ -8,6 +8,7 @@ from app.auth_module.routes import auth_bp
 from app.profile_module.routes import profile_bp
 from app.auth_module.models import User  # Import User model so tables are created
 from app.chat_module.routes import chat_bp
+from app.fitness_plan_module.routes import fitness_plan_bp
 
 # Get Info From ENV - Load from project root
 # Get the project root directory (parent of app directory)
@@ -59,8 +60,8 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
     
-    # Register profile blueprint
     app.register_blueprint(profile_bp)
+    app.register_blueprint(fitness_plan_bp)
 
     # Frontend routes
     @app.route('/')
