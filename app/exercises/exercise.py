@@ -44,6 +44,26 @@ EXERCISE_PRESETS = {
         "isolated_movement": False,
         "joint_group": ["RShoulder","RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
     },
+    "hammer_curl": {
+        "name": "Hammer Curl",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
+    "shoulder_press": {
+        "name": "Shoulder Press",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
+    "bent_over_row": {
+        "name": "Bent Over Row",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
+    "lat_pulldown": {
+        "name": "Lat Pulldown",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    }
 }
 
 class Exercise:
@@ -67,7 +87,7 @@ class Exercise:
         pass
 
     def get_metrics(self):
-        dt = 1 / self.fps
+        dt = 1 / self.fps if self.fps else 0
 
         for joint in self.frame_vals.keys():
             x_positions = [val[0] for val in self.frame_vals[joint].values()]
@@ -75,8 +95,13 @@ class Exercise:
             normalized_x = [(x / self.frame_width) for x in x_positions]
             # normalized_x = normalized_x - np.mean(normalized_x)
             self.x_metrics[joint + " position"] = normalized_x
-            self.x_metrics[joint + " velocity"] = np.gradient(self.x_metrics[joint + " position"], dt)
-            self.x_metrics[joint + " acceleration"] = np.gradient(self.x_metrics[joint + " velocity"], dt)
+            if len(normalized_x) >= 2 and dt > 0:
+                self.x_metrics[joint + " velocity"] = np.gradient(self.x_metrics[joint + " position"], dt)
+                self.x_metrics[joint + " acceleration"] = np.gradient(self.x_metrics[joint + " velocity"], dt)
+            else:
+                # Not enough samples to compute derivatives; keep arrays aligned.
+                self.x_metrics[joint + " velocity"] = np.zeros(len(normalized_x))
+                self.x_metrics[joint + " acceleration"] = np.zeros(len(normalized_x))
 
 
             y_positions = [val[1] for val in self.frame_vals[joint].values()]
@@ -84,8 +109,13 @@ class Exercise:
             normalized_y = [(y / self.frame_height) for y in y_positions]
             # normalized_y = normalized_y - np.mean(normalized_y)
             self.y_metrics[joint + " position"] = normalized_y
-            self.y_metrics[joint + " velocity"] = np.gradient(self.y_metrics[joint + " position"], dt)
-            self.y_metrics[joint + " acceleration"] = np.gradient(self.y_metrics[joint + " velocity"], dt)
+            if len(normalized_y) >= 2 and dt > 0:
+                self.y_metrics[joint + " velocity"] = np.gradient(self.y_metrics[joint + " position"], dt)
+                self.y_metrics[joint + " acceleration"] = np.gradient(self.y_metrics[joint + " velocity"], dt)
+            else:
+                # Not enough samples to compute derivatives; keep arrays aligned.
+                self.y_metrics[joint + " velocity"] = np.zeros(len(normalized_y))
+                self.y_metrics[joint + " acceleration"] = np.zeros(len(normalized_y))
 
     def graph_metrics(self):
 

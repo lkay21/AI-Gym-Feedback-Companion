@@ -7,6 +7,8 @@ import time
 import mediapipe as mp
 from sklearn.metrics import root_mean_squared_error
 from scipy.interpolate import interp1d
+import subprocess
+import os
 
 
 # body parts and pose pairs for OpenPose (graph.opt)
@@ -40,7 +42,7 @@ def generate_pose(file_path, joint_group, frame_vals):
 
     # load the pre-trained model
     net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
-    thres = 0.3
+    thres = 0.15
 
     # read the video file and use opencv to gather width, height, fps
     cap = cv.VideoCapture(file_path)
@@ -273,11 +275,16 @@ def FormScore(example_path, user_path, exercise):
 
     print(f"\nOverall Form Score for {exercise_obj.name}: {overall_score * 100} percent\n")
 
+    return overall_score, joint_scores
+
 
 # takes in example video for input exercise to get "standard" data for each joing in define joint group for that exercise
 # data gets saved to ./exercise_data 
 # also saves relevant video parameters for future use
 def get_standard_pose(example_path, exercise):
+
+    print(f"\nProcessing standard pose data for Exercise")
+    print(f"Exercise Name: {exercise}")
 
     exercise_obj = ex.Exercise.from_preset(exercise)
 
@@ -299,8 +306,9 @@ def get_standard_pose(example_path, exercise):
     #     print(f"Initializing frame_vals for {key}: {val}")
 
 
-    print(f"Time taken for FormScore estimation: {end_time - start_time} seconds")
+    print(f"Time taken for Pose estimation: {end_time - start_time} seconds")
 
+    print("\nFrames processed for pose estimation of video for Excercise")
     exercise_obj.set_frame_values(frame_vals, frame_count, fps, frame_width, frame_height)
     # exercise_obj.graph_metrics()
 
@@ -323,6 +331,7 @@ def get_standard_pose(example_path, exercise):
          f.write(f"Frame Height: {frame_height}\n")
 
 
+    print(f"\n gathering standard pose data for joints: {exercise_obj.joint_group}\n")
     for joint in frame_vals.keys():
 
         file_name = f"{exercise_obj.name}_{joint}".replace(" ", "_").lower()
@@ -332,23 +341,31 @@ def get_standard_pose(example_path, exercise):
              f.write(f"Joint: {joint}\n")
              f.write(f"{frame_vals[joint]}\n")
     
-
+# def mov_to_mp4(input_path, output_path):
+#     pass
 
 if __name__ == "__main__":
 
     exercise_str = "bicep_curl"
-    exercise_str_2 = "lateral_raise"
+    # exercise_str_2 = "lateral_raise"
     example_vid = "example.mp4"
-    example_vid_2 = "lat_raise_stand.mp4"
+    # example_vid_2 = "lat_raise_stand.mp4"
     rename_vid = "rename.mp4"
-    rename_vid_2 = "lat_raise_good.mp4"
+    # rename_vid_2 = "lat_raise_good.mp4"
+
+    # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
+    # exercises = ["hammer_curl", "shoulder_press", "bent_over_row", "lat_pulldown"]
+
+    # for vid_string, exercise in zip(vid_strings, exercises):
+
+    #     get_standard_pose(vid_string, exercise)
     
-    get_standard_pose(example_vid, exercise_str)
-    get_standard_pose(example_vid_2, exercise_str_2)
+    # get_standard_pose(example_vid, exercise_str)
+    # get_standard_pose(example_vid_2, exercise_str_2)
 
-    FormScore(example_vid, rename_vid, exercise_str)
+    overall, joints = FormScore(example_vid, rename_vid, exercise_str)
 
-    FormScore(example_vid_2, rename_vid_2, exercise_str_2)
+    # FormScore(example_vid_2, rename_vid_2, exercise_str_2)
 
     # fetch_standard_data("RWrist", "x", exercise_str)
 
