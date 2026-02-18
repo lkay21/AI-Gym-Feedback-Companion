@@ -1,8 +1,9 @@
 """
 API routes for user profiles and health data
 """
+import json
 from flask import Blueprint, request, jsonify, session
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 from datetime import datetime
 from app.profile_module.service import ProfileService, HealthDataService
 from app.profile_module.models import UserProfile, HealthData
@@ -18,28 +19,7 @@ def get_authenticated_user_id() -> str:
     return user_id
 
 
-def validate_profile_data(data: Dict[str, Any]) -> Tuple[bool, str]:
-    """Validate profile data"""
-    if 'age' in data and data['age'] is not None:
-        if not isinstance(data['age'], int) or data['age'] < 1 or data['age'] > 150:
-            return False, "Age must be between 1 and 150"
-    
-    if 'height' in data and data['height'] is not None:
-        if not isinstance(data['height'], (int, float)) or data['height'] <= 0:
-            return False, "Height must be a positive number"
-    
-    if 'weight' in data and data['weight'] is not None:
-        if not isinstance(data['weight'], (int, float)) or data['weight'] <= 0:
-            return False, "Weight must be a positive number"
-    
-    if 'fitness_goals' in data and data['fitness_goals'] is not None:
-        if not isinstance(data['fitness_goals'], list):
-            return False, "Fitness goals must be a list"
-    
-    return True, None
-
-
-# User Profile Routes
+# User Profile Routes (profile = user_id only; all health data is in HealthData)
 
 @profile_bp.route('/user', methods=['GET'])
 def get_profile():
@@ -61,47 +41,16 @@ def get_profile():
 
 @profile_bp.route('/user', methods=['POST'])
 def create_profile():
-    """Create or update user profile"""
+    """Ensure user profile exists (profile = user_id only). Health data lives in /api/profile/health."""
     try:
         user_id = get_authenticated_user_id()
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        # Validate data
-        is_valid, error_msg = validate_profile_data(data)
-        if not is_valid:
-            return jsonify({'error': error_msg}), 400
-        
         service = ProfileService()
-        
-        # Check if profile exists
-        existing_profile = service.get_profile(user_id)
-        
-        if existing_profile:
-            # Update existing profile
-            profile = service.update_profile(user_id, data)
-            return jsonify({
-                'message': 'Profile updated successfully',
-                'profile': profile.to_dict()
-            }), 200
-        else:
-            # Create new profile
-            profile = UserProfile(
-                user_id=user_id,
-                age=data.get('age'),
-                height=data.get('height'),
-                weight=data.get('weight'),
-                fitness_goals=data.get('fitness_goals', []),
-                gender=data.get('gender'),
-                activity_level=data.get('activity_level')
-            )
-            service.create_profile(profile)
-            return jsonify({
-                'message': 'Profile created successfully',
-                'profile': profile.to_dict()
-            }), 201
+        existing = service.get_profile(user_id)
+        if existing:
+            return jsonify({'message': 'Profile exists', 'profile': existing.to_dict()}), 200
+        service.create_profile(UserProfile(user_id=user_id))
+        profile = service.get_profile(user_id)
+        return jsonify({'message': 'Profile created', 'profile': profile.to_dict()}), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 401
     except Exception as e:
@@ -110,32 +59,12 @@ def create_profile():
 
 @profile_bp.route('/user', methods=['PUT'])
 def update_profile():
-    """Update user profile (partial update)"""
+    """No fields to update (profile = user_id only). Ensures profile exists."""
     try:
         user_id = get_authenticated_user_id()
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        # Validate data
-        is_valid, error_msg = validate_profile_data(data)
-        if not is_valid:
-            return jsonify({'error': error_msg}), 400
-        
         service = ProfileService()
-        
-        # Check if profile exists
-        existing_profile = service.get_profile(user_id)
-        if not existing_profile:
-            return jsonify({'error': 'Profile not found. Create profile first.'}), 404
-        
-        # Update profile
-        profile = service.update_profile(user_id, data)
-        return jsonify({
-            'message': 'Profile updated successfully',
-            'profile': profile.to_dict()
-        }), 200
+        profile = service.update_profile(user_id, request.get_json() or {})
+        return jsonify({'message': 'Profile OK', 'profile': profile.to_dict()}), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 401
     except Exception as e:
@@ -245,15 +174,13 @@ def update_health_data(timestamp):
         
         if not data:
             return jsonify({'error': 'No data provided'}), 400
+        if 'context' in data and isinstance(data['context'], dict):
+            data = {**data, 'context': json.dumps(data['context'])}
         
         service = HealthDataService()
-        
-        # Check if entry exists
         existing = service.get_health_data(user_id, timestamp)
         if not existing:
             return jsonify({'error': 'Health data entry not found'}), 404
-        
-        # Update entry
         updated = service.update_health_data(user_id, timestamp, data)
         
         return jsonify({
