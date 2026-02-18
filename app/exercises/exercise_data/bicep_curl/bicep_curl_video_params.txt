@@ -1,0 +1,4 @@
+Frame Count: 115
+FPS: 24.65462274176408
+Frame Width: 488
+Frame Height: 504

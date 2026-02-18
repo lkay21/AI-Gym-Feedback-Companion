@@ -1,3 +1,4 @@
+import shutil
 import cv2 as cv
 import os
 import numpy as np
@@ -6,6 +7,8 @@ import time
 import mediapipe as mp
 from sklearn.metrics import root_mean_squared_error
 from scipy.interpolate import interp1d
+import subprocess
+import os
 
 
 # body parts and pose pairs for OpenPose (graph.opt)
@@ -26,14 +29,20 @@ POSE_PAIRS = [ ["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElb
                ["Neck", "Nose"], ["Nose", "REye"], ["REye", "REar"],
                ["Nose", "LEye"], ["LEye", "LEar"] ]
 
+EXERCISES = ["bicep_curl", "lateral_raise"]
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(APP_DIR)
+APP_DATA_DIR = os.path.join(APP_DIR, "exercise_data")
+
 # proto_file = "./app/models/pose_deploy.prototxt"
 # weights_file = "./app/models/pose_iter_440000.caffemodel"
 
 def generate_pose(file_path, joint_group, frame_vals):
 
     # load the pre-trained model
-    net = cv.dnn.readNetFromTensorflow("app/models/graph_opt.pb")
-    thres = 0.3
+    net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
+    thres = 0.15
 
     # read the video file and use opencv to gather width, height, fps
     cap = cv.VideoCapture(file_path)
@@ -46,9 +55,14 @@ def generate_pose(file_path, joint_group, frame_vals):
     fourcc = cv.VideoWriter_fourcc(*'avc1')
 
     # directory to save output video and create output video writer (actual video work)
-    output_path = os.path.join('app', 'video_out', os.path.basename(file_path))
+    output_path = os.path.join(APP_DIR, 'video_out', os.path.basename(file_path))
     # output_path = os.path.join('static', 'pose_videos', os.path.basename(file_path))
+
+    print(f"Output video will be saved to: {output_path}")
     out = cv.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
+    if not out.isOpened():
+        print("Error: Could not open video writer.")
+        return
 
     # read the first two frames, ret is bool if frame read and frame is frame properties
     ret, frame_1 = cap.read()
@@ -94,7 +108,7 @@ def generate_pose(file_path, joint_group, frame_vals):
                 cv.putText(frame, "{}".format(i), (int(x), int(y)), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, lineType=cv.LINE_AA)
                 
                 if i in joint_group:
-                    print(f"Frame {frame_count} - Body Part {BODY_PARTS_BY_INDEX[i]}: ({int(x)}, {int(y)}) with prob {prob}")
+                    # print(f"Frame {frame_count} - Body Part {BODY_PARTS_BY_INDEX[i]}: ({int(x)}, {int(y)}) with prob {prob}")
 
                     # frame_vals is dictionary of dictionaries, need to access body_part index first and then frame count
                     # if frame count does not exist, create it and then add the x,y tuple
@@ -138,8 +152,54 @@ def generate_pose(file_path, joint_group, frame_vals):
 
     return frame_count, fps, frame_width, frame_height
 
+def fetch_standard_data(joint, axis, exercise_name):
+    output_data = []
+    # raw_data = {}
+
+    # # update to use fps when velocity/acceleration needed
+    # fps, frame_width, frame_height = 0, 0, 0
+
+    folder_name = f"{exercise_name}"
+    folder_name = folder_name.replace(" ", "_").lower()
+    output_path = os.path.join(APP_DATA_DIR, folder_name)
+    file_name = f"{exercise_name}_{joint}".replace(" ", "_").lower()
+    vid_file_name = f"{exercise_name}_video_params".replace(" ", "_").lower()
+
+    with open(os.path.join(output_path, file_name + ".txt"), 'r') as f:
+        lines = f.readlines()
+        raw_data = eval(lines[1])
+        f.close()
+
+    with open(os.path.join(output_path, vid_file_name + ".txt"), 'r') as f:
+        lines = f.readlines()
+        fps = float(lines[1].split(": ")[1])    
+        frame_width = int(lines[2].split(": ")[1])
+        frame_height = int(lines[3].split(": ")[1])
+        f.close()
+
+    
+    ax = 0 if axis.lower() == "x" else 1
+    div = frame_width if axis.lower() == "x" else frame_height
+
+    for key, val in raw_data.items():
+        output_data.append(val[ax] / div)
+
+    return output_data
+
+def score_func(score):
+    if score >= .80 and score <= 1.0:
+        return score ** 2 
+    elif score >= .70 and score < .80:
+        return score ** 3 
+    else:
+        return score ** 4
+
+        
+
+
 def FormScore(example_path, user_path, exercise):
         
+    exercise = exercise.replace(" ", "_").lower()
     exercise_obj = ex.Exercise.from_preset(exercise)
 
     print(f"\nCalculating FormScore for Exercise")
@@ -147,56 +207,44 @@ def FormScore(example_path, user_path, exercise):
         f"\nIsolated Movement: {exercise_obj.isolated_movement}"
         f"\nJoint Group: {exercise_obj.joint_group}\n")
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    example_vid = os.path.join(script_dir, "video_in", example_path)
-    user_vid = os.path.join(script_dir, "video_in", user_path)
-
-    paths = [example_vid, user_vid]
+    example_vid = os.path.join(APP_DIR, "video_in", example_path)
+    user_vid = os.path.join(APP_DIR, "video_in", user_path)
 
     example_xs, example_ys = {}, {}
     user_xs, user_ys = {}, {}
 
-    for path in paths:
+    frame_vals = {}
+    joint_group_nums = []
+    
+    for joint in exercise_obj.joint_group:
+        joint_group_nums.append(BODY_PARTS[joint])
+        frame_vals[joint] = {}
 
-        frame_vals = {}
-        joint_group_nums = []
-        
-        for joint in exercise_obj.joint_group:
-            joint_group_nums.append(BODY_PARTS[joint])
-            frame_vals[joint] = {}
+    start_time = time.time()
+    frame_count, fps, frame_width, frame_height = generate_pose(user_vid, joint_group_nums, frame_vals)
+    end_time = time.time()
 
-        start_time = time.time()
-        frame_count, fps, frame_width, frame_height = generate_pose(path, joint_group_nums, frame_vals)
-        end_time = time.time()
-
-        for key, val in frame_vals.items():
-            print(f"Initializing frame_vals for {key}: {val}")
+    # for key, val in frame_vals.items():
+    #     print(f"Initializing frame_vals for {key}: {val}")
 
 
-        print(f"Time taken for FormScore estimation: {end_time - start_time} seconds")
+    print(f"Time taken for FormScore estimation: {end_time - start_time} seconds")
 
-        exercise_obj.set_frame_values(frame_vals, frame_count, fps, frame_width, frame_height)
-        # exercise_obj.graph_metrics()
+    exercise_obj.set_frame_values(frame_vals, frame_count, fps, frame_width, frame_height)
+    # exercise_obj.graph_metrics()
 
-        if path == example_vid:
-            for joint in frame_vals.keys():
-                example_xs[joint] = exercise_obj.x_metrics[joint + " position"]
-                example_ys[joint] = exercise_obj.y_metrics[joint + " position"]
-                # print(f"Joint: {joint}")
-                # print(frame_vals[joint])
-                # print("\n")
-        elif path == user_vid:
-            for joint in frame_vals.keys():
-                user_xs[joint] = exercise_obj.x_metrics[joint + " position"]
-                user_ys[joint] = exercise_obj.y_metrics[joint + " position"]
-                # print(f"Joint: {joint}")
-                # print(frame_vals[joint])
-                # print("\n")
+    for joint in frame_vals.keys():
+        user_xs[joint] = exercise_obj.x_metrics[joint + " position"]
+        user_ys[joint] = exercise_obj.y_metrics[joint + " position"]
+        example_xs[joint] = fetch_standard_data(joint, "x", exercise)
+        example_ys[joint] = fetch_standard_data(joint, "y", exercise)
+        # print(f"Joint: {joint}")
+        # print(frame_vals[joint])
+        # print("\n")
 
     joint_scores = {}
 
-    print("\nCalculating Joint Scores:\n")
+    # print("\nCalculating Joint Scores:\n")
 
     for joint in exercise_obj.joint_group:
         example_x = example_xs[joint]
@@ -211,8 +259,8 @@ def FormScore(example_path, user_path, exercise):
         resampled_user_x = interp_user_x(common)
         mae_x = np.mean(np.abs(resampled_example_x - resampled_user_x))
         score = 1 - mae_x
-        joint_scores[joint + " x"] = score
-        print(f"Joint: {joint} X Score: {score}")
+        joint_scores[joint + " x"] = score_func(score)
+        # print(f"Joint: {joint} X Score: {score}")
 
         interp_example_y = interp1d(np.linspace(0, 1, len(example_y)), example_y)
         interp_user_y = interp1d(np.linspace(0, 1, len(user_y)), user_y)
@@ -220,28 +268,108 @@ def FormScore(example_path, user_path, exercise):
         resampled_user_y = interp_user_y(common)
         mae_y = np.mean(np.abs(resampled_example_y - resampled_user_y))
         score = 1 - mae_y
-        joint_scores[joint + " y"] = score
-        print(f"Joint: {joint} Y Score: {score}")
+        joint_scores[joint + " y"] = score_func(score)
+        # print(f"Joint: {joint} Y Score: {score}")
 
     overall_score = np.mean(list(joint_scores.values()))
 
     print(f"\nOverall Form Score for {exercise_obj.name}: {overall_score * 100} percent\n")
 
+    return overall_score, joint_scores
+
+
+# takes in example video for input exercise to get "standard" data for each joing in define joint group for that exercise
+# data gets saved to ./exercise_data 
+# also saves relevant video parameters for future use
+def get_standard_pose(example_path, exercise):
+
+    print(f"\nProcessing standard pose data for Exercise")
+    print(f"Exercise Name: {exercise}")
+
+    exercise_obj = ex.Exercise.from_preset(exercise)
+
+    example_vid = os.path.join(APP_DIR, "video_in", example_path)
+
+    frame_vals = {}
+    joint_group_nums = []
+
+
+    for joint in exercise_obj.joint_group:
+        joint_group_nums.append(BODY_PARTS[joint])
+        frame_vals[joint] = {}
+
+    start_time = time.time()
+    frame_count, fps, frame_width, frame_height = generate_pose(example_vid, joint_group_nums, frame_vals)
+    end_time = time.time()
+
+    # for key, val in frame_vals.items():
+    #     print(f"Initializing frame_vals for {key}: {val}")
+
+
+    print(f"Time taken for Pose estimation: {end_time - start_time} seconds")
+
+    print("\nFrames processed for pose estimation of video for Excercise")
+    exercise_obj.set_frame_values(frame_vals, frame_count, fps, frame_width, frame_height)
+    # exercise_obj.graph_metrics()
+
+    folder_name = f"{exercise_obj.name}"
+    folder_name = folder_name.replace(" ", "_").lower()
+    output_path = os.path.join(APP_DATA_DIR, folder_name)
+
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
     
+    os.makedirs(output_path)
+
+    file_name = f"{exercise_obj.name}_video_params".replace(" ", "_").lower()
+    file_output_path = os.path.join(output_path, file_name + ".txt")
+
+    with open(file_output_path, 'w') as f:
+         f.write(f"Frame Count: {frame_count}\n")
+         f.write(f"FPS: {fps}\n")
+         f.write(f"Frame Width: {frame_width}\n")
+         f.write(f"Frame Height: {frame_height}\n")
 
 
+    print(f"\n gathering standard pose data for joints: {exercise_obj.joint_group}\n")
+    for joint in frame_vals.keys():
+
+        file_name = f"{exercise_obj.name}_{joint}".replace(" ", "_").lower()
+        file_output_path = os.path.join(output_path, file_name + ".txt")
+
+        with open(file_output_path, 'w') as f:
+             f.write(f"Joint: {joint}\n")
+             f.write(f"{frame_vals[joint]}\n")
     
-
-
-
+# def mov_to_mp4(input_path, output_path):
+#     pass
 
 if __name__ == "__main__":
 
     exercise_str = "bicep_curl"
+    # exercise_str_2 = "lateral_raise"
     example_vid = "example.mp4"
+    # example_vid_2 = "lat_raise_stand.mp4"
     rename_vid = "rename.mp4"
+    # rename_vid_2 = "lat_raise_good.mp4"
 
-    FormScore(example_vid, rename_vid, exercise_str)
+    # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
+    # exercises = ["hammer_curl", "shoulder_press", "bent_over_row", "lat_pulldown"]
+
+    # for vid_string, exercise in zip(vid_strings, exercises):
+
+    #     get_standard_pose(vid_string, exercise)
+    
+    # get_standard_pose(example_vid, exercise_str)
+    # get_standard_pose(example_vid_2, exercise_str_2)
+
+    overall, joints = FormScore(example_vid, rename_vid, exercise_str)
+
+    # FormScore(example_vid_2, rename_vid_2, exercise_str_2)
+
+    # fetch_standard_data("RWrist", "x", exercise_str)
+
+    # get_standard_pose(example_vid, exercise_str)
 
     # left_bicep_curl = exercise.Exercise.from_preset("iso_left_bicep_curl")
     # bicep_curl = exercise.Exercise.from_preset("bicep_curl")
