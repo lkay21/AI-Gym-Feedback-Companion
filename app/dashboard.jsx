@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Pressable,
   TextInput,
   KeyboardAvoidingView,
@@ -13,6 +12,9 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import MenuDropdown from "../components/MenuDropdown";
 
 // ---- dummy data (replace later) ----
 const WEEK_RANGE = "12/9/2025 - 12/15/2025";
@@ -23,6 +25,7 @@ const WEEKLY_PLAN = [
 ];
 
 export default function Dashboard() {
+  const router = useRouter();
   const [prompt, setPrompt] = useState("");
 
   const onSend = () => {
@@ -31,7 +34,6 @@ export default function Dashboard() {
     setPrompt("");
   };
 
-  // Simple “chart” wave points (pure UI)
   const waveBars = useMemo(
     () => [
       { label: "8A", h: 36 },
@@ -44,7 +46,7 @@ export default function Dashboard() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <LinearGradient
         colors={["#8E5AAE", "#4C76D6"]}
         start={{ x: 0.05, y: 0.05 }}
@@ -55,14 +57,9 @@ export default function Dashboard() {
           style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {/* Top right Menu (visual only) */}
+          {/* Top right dropdown */}
           <View style={styles.topRow}>
-            <View style={{ width: 64 }} />
-            <View style={{ width: 64 }} />
-            <Pressable style={styles.menuBtn} onPress={() => {}}>
-              <Text style={styles.menuText}>Menu</Text>
-              <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.9)" />
-            </Pressable>
+            <MenuDropdown />
           </View>
 
           <Text style={styles.title}>Fitness Dashboard</Text>
@@ -109,10 +106,19 @@ export default function Dashboard() {
             </View>
 
             <View style={styles.btnRow}>
-              <Pressable style={styles.pillBtn} onPress={() => {}}>
+              <Pressable
+                style={styles.pillBtn}
+                onPress={() => router.push("/record")}
+              >
                 <Text style={styles.pillBtnText}>Record Video</Text>
               </Pressable>
-              <Pressable style={styles.pillBtn} onPress={() => {}}>
+
+              {/* You said Select Exercise is reached from Record’s Upload button,
+                  so this can also go to Record (same flow) */}
+              <Pressable
+                style={styles.pillBtn}
+                onPress={() => router.push("/record")}
+              >
                 <Text style={styles.pillBtnText}>Upload Video</Text>
               </Pressable>
             </View>
@@ -149,13 +155,7 @@ export default function Dashboard() {
             <View style={styles.chartBars}>
               {waveBars.map((b) => (
                 <View key={b.label} style={styles.barCol}>
-                  <View
-                    style={[
-                      styles.bar,
-                      { height: b.h },
-                      b.active && styles.barActive,
-                    ]}
-                  />
+                  <View style={[styles.bar, { height: b.h }, b.active && styles.barActive]} />
                   <Text style={[styles.barLabel, b.active && styles.barLabelActive]}>
                     {b.label}
                   </Text>
@@ -187,6 +187,7 @@ export default function Dashboard() {
   );
 }
 
+// (keep your existing styles; only topRow changed a bit)
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: "#000" },
@@ -195,21 +196,8 @@ const styles = StyleSheet.create({
   topRow: {
     paddingTop: 6,
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "flex-end",
   },
-  menuBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  menuText: { color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "700" },
 
   title: {
     color: "#fff",
@@ -243,177 +231,40 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  planRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginVertical: 4,
-    paddingHorizontal: 6,
-  },
+  planRow: { flexDirection: "row", justifyContent: "center", marginVertical: 4, paddingHorizontal: 6 },
   planDay: { color: "#fff", fontWeight: "900", fontSize: 12 },
   planText: { color: "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 12 },
+  shoeIcon: { position: "absolute", right: 12, bottom: 8, opacity: 0.9 },
 
-  shoeIcon: {
-    position: "absolute",
-    right: 12,
-    bottom: 8,
-    opacity: 0.9,
-  },
-
-  formHeader: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
-  },
-  formBlurb: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 11,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  mediaFrame: {
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-    backgroundColor: "rgba(0,0,0,0.18)",
-  },
+  formHeader: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 6 },
+  formBlurb: { color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "700", textAlign: "center", marginBottom: 10 },
+  mediaFrame: { borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", backgroundColor: "rgba(0,0,0,0.18)" },
   mediaImg: { width: "100%", height: 150 },
 
-  btnRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-    marginTop: 10,
-  },
-  pillBtn: {
-    flex: 1,
-    height: 30,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.28)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
+  btnRow: { flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 10 },
+  pillBtn: { flex: 1, height: 30, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.28)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)" },
   pillBtnText: { color: "rgba(255,255,255,0.92)", fontSize: 11, fontWeight: "800" },
 
-  metaText: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 11,
-    fontWeight: "700",
-    marginTop: 4,
-  },
+  metaText: { color: "rgba(255,255,255,0.92)", fontSize: 11, fontWeight: "700", marginTop: 4 },
   metaLabel: { color: "rgba(255,255,255,0.7)", fontWeight: "900" },
 
-  stepsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginTop: 2,
-    marginBottom: 8,
-    paddingHorizontal: 6,
-  },
-  stepsIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.10)",
-  },
+  stepsRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 2, marginBottom: 8, paddingHorizontal: 6 },
+  stepsIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.10)" },
   stepsText: { color: "rgba(255,255,255,0.92)", fontSize: 14, fontWeight: "900" },
 
-  chartWrap: {
-    flex: 1,
-    borderRadius: 16,
-    paddingTop: 10,
-    paddingHorizontal: 10,
-    marginBottom: 96, // leave room for prompt bar
-  },
-  bubble: {
-    alignSelf: "flex-end",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-    marginBottom: 8,
-  },
+  chartWrap: { flex: 1, borderRadius: 16, paddingTop: 10, paddingHorizontal: 10, marginBottom: 96 },
+  bubble: { alignSelf: "flex-end", backgroundColor: "rgba(255,255,255,0.92)", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", marginBottom: 8 },
   bubbleText: { color: "#222", fontWeight: "900", fontSize: 12 },
 
-  chartBars: {
-    flex: 1,
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    justifyContent: "flex-end",
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
+  chartBars: { flex: 1, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 6, justifyContent: "flex-end", flexDirection: "row", gap: 10, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)" },
   barCol: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
-  bar: {
-    width: "100%",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.65)",
-  },
-  barActive: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-  },
-  barLabel: {
-    marginTop: 8,
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 11,
-    fontWeight: "800",
-  },
+  bar: { width: "100%", borderRadius: 18, backgroundColor: "rgba(255,255,255,0.65)" },
+  barActive: { backgroundColor: "rgba(255,255,255,0.92)" },
+  barLabel: { marginTop: 8, color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: "800" },
   barLabelActive: { color: "rgba(255,255,255,0.95)" },
 
-  promptBarWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 18,
-    paddingHorizontal: 18,
-  },
-  promptBar: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 28,
-    paddingLeft: 16,
-    paddingRight: 10,
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  promptInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#222",
-    paddingRight: 10,
-  },
-  sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-  },
+  promptBarWrap: { position: "absolute", left: 0, right: 0, bottom: 18, paddingHorizontal: 18 },
+  promptBar: { backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 28, paddingLeft: 16, paddingRight: 10, height: 56, flexDirection: "row", alignItems: "center" },
+  promptInput: { flex: 1, fontSize: 14, fontWeight: "600", color: "#222", paddingRight: 10 },
+  sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.12)" },
 });
-

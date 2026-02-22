@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, Circle, Line } from "react-native-svg";
+import MenuDropdown from "../components/MenuDropdown";
 
 /**
  * Notes:

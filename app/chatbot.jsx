@@ -1,18 +1,18 @@
-
-import React, { useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useMemo, useRef, useState } from "react";
+import {
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import MenuDropdown from "../components/MenuDropdown";
 
 const BOT_NAME = "Fred";
 
@@ -190,10 +190,9 @@ export default function ChatBotScreen() {
           <View style={styles.card}>
             <View style={styles.topBar}>
               <Text style={styles.screenTitle}>ChatBot Screen</Text>
-              <Pressable onPress={() => {}} style={styles.menuBtn}>
-                <Text style={styles.menuText}>Menu</Text>
-                <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.9)" />
-              </Pressable>
+             
+              <MenuDropdown />
+
             </View>
 
             <FlatList
