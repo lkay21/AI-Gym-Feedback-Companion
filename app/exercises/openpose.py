@@ -10,6 +10,7 @@ import mediapipe as mp
 from sklearn.metrics import root_mean_squared_error
 from scipy.interpolate import interp1d
 import subprocess
+from google import genai
 import os
 
 load_dotenv()
@@ -17,6 +18,7 @@ load_dotenv()
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 s3 = boto3.client(
     's3',
@@ -53,7 +55,7 @@ APP_DATA_DIR = os.path.join(APP_DIR, "exercise_data")
 # proto_file = "./app/models/pose_deploy.prototxt"
 # weights_file = "./app/models/pose_iter_440000.caffemodel"
 
-def generate_pose(file_path, joint_group, frame_vals):
+def generate_pose(file_path, joint_group, frame_vals, aws_upload):
 
     # load the pre-trained model
     net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
@@ -167,7 +169,8 @@ def generate_pose(file_path, joint_group, frame_vals):
     out.release()
     cv.destroyAllWindows()
 
-    s3.upload_file(output_path, bucket_name, os.path.basename(output_path))
+    if aws_upload:
+        s3.upload_file(output_path, bucket_name, os.path.basename(output_path))
 
     return frame_count, fps, frame_width, frame_height
 
@@ -207,16 +210,32 @@ def fetch_standard_data(joint, axis, exercise_name):
 
 def score_func(score):
     if score >= .80 and score <= 1.0:
-        return score ** 2 
+        return score ** 2
     elif score >= .70 and score < .80:
-        return score ** 3 
+        return score ** 3
     else:
         return score ** 4
+    
 
-        
+# VERY basic insight generation function, can be expanded with more specific feedback based on exercise and joint movement patterns
+def generate_insights(resampled_example_x, resampled_user_x, resampled_example_y, resampled_user_y, joint, exercise_obj_name):
 
+    insights = []
 
-def FormScore(user_path, exercise):
+    diff = np.mean(np.abs(np.array(resampled_example_x) - np.array(resampled_user_x)))
+    if diff > 0.1:
+        insights.append(f"{joint}, x")
+    diff = np.mean(np.abs(np.array(resampled_example_y) - np.array(resampled_user_y)))
+    if diff > 0.1:
+        insights.append(f"{joint}, y")
+
+    return insights
+
+def FormScore(user_path, exercise, aws_upload=False):
+
+    context_dict = {}
+    user_data = {}
+    standard_data = {}
         
     exercise = exercise.replace(" ", "_").lower()
     exercise_obj = ex.Exercise.from_preset(exercise)
@@ -240,7 +259,7 @@ def FormScore(user_path, exercise):
         frame_vals[joint] = {}
 
     start_time = time.time()
-    frame_count, fps, frame_width, frame_height = generate_pose(user_vid, joint_group_nums, frame_vals)
+    frame_count, fps, frame_width, frame_height = generate_pose(user_vid, joint_group_nums, frame_vals, aws_upload)
     end_time = time.time()
 
     # for key, val in frame_vals.items():
@@ -271,6 +290,9 @@ def FormScore(user_path, exercise):
         user_x = user_xs[joint]
         user_y = user_ys[joint]
 
+        user_data[joint] = {"x": user_x, "y": user_y}
+        standard_data[joint] = {"x": example_x, "y": example_y}
+
         common = np.linspace(0, 1, 1000)
         interp_example_x = interp1d(np.linspace(0, 1, len(example_x)), example_x)
         interp_user_x = interp1d(np.linspace(0, 1, len(user_x)), user_x)
@@ -279,7 +301,8 @@ def FormScore(user_path, exercise):
         mae_x = np.mean(np.abs(resampled_example_x - resampled_user_x))
         score = 1 - mae_x
         joint_scores[joint + " x"] = score_func(score)
-        # print(f"Joint: {joint} X Score: {score}")
+        
+        print(f"Joint: {joint} X Score: {score}")
 
         interp_example_y = interp1d(np.linspace(0, 1, len(example_y)), example_y)
         interp_user_y = interp1d(np.linspace(0, 1, len(user_y)), user_y)
@@ -288,19 +311,58 @@ def FormScore(user_path, exercise):
         mae_y = np.mean(np.abs(resampled_example_y - resampled_user_y))
         score = 1 - mae_y
         joint_scores[joint + " y"] = score_func(score)
-        # print(f"Joint: {joint} Y Score: {score}")
+
+        context_dict[joint] = generate_insights(resampled_example_x, resampled_user_x, resampled_example_y, resampled_user_y, joint, exercise_obj.name)
+
+        print(f"Joint: {joint} Y Score: {score}")
 
     overall_score = np.mean(list(joint_scores.values()))
 
     print(f"\nOverall Form Score for {exercise_obj.name}: {overall_score * 100} percent\n")
 
-    return overall_score, joint_scores
+    return overall_score, joint_scores, context_dict, user_data, standard_data
 
+
+def user_output(user_path, exercise, aws_upload=False):
+
+    overall_score, joint_scores, context_dict, user_data, standard_data = FormScore(user_path, exercise, aws_upload)
+    out_string = f"\nFeedback:\n"
+
+    llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
+                 f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
+                 f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
+                 f"Please provide generic feedback for the given exercise that matches the one perfomed by the user and the data provdied to you as context."\
+                 f"Here is your context, "\
+                 f"Overall Score: {overall_score}\n"\
+                 f"Joint Scores: {joint_scores}\n"\
+                 f"Insights: {context_dict}\n"\
+                 f"User Joint Data: {user_data}\n"\
+                 f"Standard Joint Data: {standard_data}\n"\
+                 
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
+    response = client.models.generate_content(
+        model = "gemini-3-flash-preview",
+        contents=llm_prompt,
+    )
+
+
+    if overall_score >= 0.9:
+        out_string += "     Great job! Your form looks good overall."
+    elif overall_score >= 0.8:
+        out_string += "     Not bad form! However, there are some areas for improvement in your form."
+    else:
+        out_string += "     Your form needs work. Focus on improving your technique for better results and injury prevention."
+
+
+    out_string += response.text
+
+    return out_string
 
 # takes in example video for input exercise to get "standard" data for each joing in define joint group for that exercise
 # data gets saved to ./exercise_data 
 # also saves relevant video parameters for future use
-def get_standard_pose(example_path, exercise):
+def get_standard_pose(example_path, exercise, aws_upload=False):
 
     print(f"\nProcessing standard pose data for Exercise")
     print(f"Exercise Name: {exercise}")
@@ -318,7 +380,7 @@ def get_standard_pose(example_path, exercise):
         frame_vals[joint] = {}
 
     start_time = time.time()
-    frame_count, fps, frame_width, frame_height = generate_pose(example_vid, joint_group_nums, frame_vals)
+    frame_count, fps, frame_width, frame_height = generate_pose(example_vid, joint_group_nums, frame_vals, aws_upload)
     end_time = time.time()
 
     # for key, val in frame_vals.items():
@@ -366,11 +428,11 @@ def get_standard_pose(example_path, exercise):
 if __name__ == "__main__":
 
     exercise_str = "bicep_curl"
-    # exercise_str_2 = "lateral_raise"
+    exercise_str_2 = "lateral_raise"
     example_vid = "example.mp4"
-    # example_vid_2 = "lat_raise_stand.mp4"
+    example_vid_2 = "lat_raise_stand.mp4"
     rename_vid = "rename.mp4"
-    # rename_vid_2 = "lat_raise_good.mp4"
+    rename_vid_2 = "lat_raise_bad.mp4"
 
     # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
     # exercises = ["hammer_curl", "shoulder_press", "bent_over_row", "lat_pulldown"]
@@ -382,7 +444,17 @@ if __name__ == "__main__":
     # get_standard_pose(example_vid, exercise_str)
     # get_standard_pose(example_vid_2, exercise_str_2)
 
-    overall, joints = FormScore(example_vid, rename_vid, exercise_str)
+    user_out = user_output(rename_vid, exercise_str)
+    print(user_out)
+
+    # overall, joints, context_dict = FormScore(rename_vid, exercise_str)
+
+    # print("\nContextual Feedback for User:\n")
+    # for key, feedback in context_dict.items():
+    #     print(f"{key}: {feedback}")
+
+
+    # overall, joints = FormScore(example_vid, rename_vid, exercise_str)
 
     # FormScore(example_vid_2, rename_vid_2, exercise_str_2)
 
