@@ -46,7 +46,7 @@ def parse_user_video(video_file, exercise):
 
     # Add to video_in
     # Call formscore with video path and exercise type
-    overall_score, joint_scores = FormScore(video_file, exercise)
+    overall_score, joint_scores = FormScore(video_file, exercise, aws_upload=True)
 
     return overall_score, joint_scores
 
