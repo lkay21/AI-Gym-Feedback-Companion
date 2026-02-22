@@ -5,14 +5,99 @@ calendar-ready data.
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from datetime import date, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.chatbot.types import FitnessPlan
 
 
 class PlanParseError(ValueError):
 	"""Raised when a fitness plan cannot be mapped to a calendar plan."""
+
+
+def mapDatabasePlanToCalendar(plan_entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+	"""
+	Convert database fitness plan entries (from DynamoDB) into the calendar format
+	expected by the frontend.
+	
+	Expected format of plan_entries:
+	[
+		{
+			"date_of_workout": "2026-02-22",
+			"exercise_name": "Bench Press",
+			"exercise_description": "...",
+			"rep_count": 10,
+			"muscle_group": "Chest",
+			"expected_calories_burnt": 50,
+			"weight_to_lift_suggestion": 75
+		},
+		...
+	]
+	
+	Returns calendar structure with 2 weeks of workouts.
+	"""
+	if not plan_entries:
+		return {
+			"planName": "Your 2-Week Fitness Plan",
+			"weeks": []
+		}
+	
+	# Group exercises by date
+	exercises_by_date: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+	for entry in plan_entries:
+		date_str = entry.get("date_of_workout")
+		if date_str:
+			exercises_by_date[date_str].append(entry)
+	
+	# Sort dates and determine week structure
+	sorted_dates = sorted(exercises_by_date.keys())
+	if not sorted_dates:
+		return {
+			"planName": "Your 2-Week Fitness Plan",
+			"weeks": []
+		}
+	
+	start_date = date.fromisoformat(sorted_dates[0])
+	
+	# Build week structure
+	weeks: List[Dict[str, Any]] = []
+	current_date = start_date
+	
+	for week_num in range(1, 3):  # 2 weeks
+		week_days: List[Dict[str, Any]] = []
+		for day_in_week in range(7):
+			date_str = current_date.isoformat()
+			exercises = exercises_by_date.get(date_str, [])
+			
+			week_days.append({
+				"date": date_str,
+				"workoutType": "Workout" if exercises else "Rest",
+				"exercises": [
+					{
+						"name": ex.get("exercise_name", ""),
+						"sets": 3,  # Default sets
+						"reps": ex.get("rep_count", 0),
+						"weight": f"{ex.get('weight_to_lift_suggestion', 0)} lbs",
+						"muscleGroup": ex.get("muscle_group", ""),
+						"calories": ex.get("expected_calories_burnt", 0),
+						"description": ex.get("exercise_description", "")
+					}
+					for ex in exercises
+				]
+			})
+			current_date += timedelta(days=1)
+		
+		weeks.append({
+			"weekNumber": week_num,
+			"days": week_days
+		})
+	
+	return {
+		"planName": "Your 2-Week Fitness Plan",
+		"startDate": start_date.isoformat(),
+		"weeks": weeks
+	}
 
 
 def mapLLMPlanToStructuredPlan(raw_response: FitnessPlan, start_date: str) -> Dict[str, Any]:

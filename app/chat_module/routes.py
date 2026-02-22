@@ -360,14 +360,14 @@ def generate_plan():
 
     Request body: {} (empty, uses authenticated user's health profile)
     """
+    # Import here to avoid circular dependency
+    from app.fitness_plan_module.service import FitnessPlanService
+    from app.fitness.plan_transformer import mapDatabasePlanToCalendar, PlanParseError
+    
     try:
         user_id = get_authenticated_user_id()
         if not user_id:
             return jsonify({'error': 'Not authenticated'}), 401
-        
-        # Import here to avoid circular dependency
-        from app.fitness_plan_module.service import FitnessPlanService
-        from app.fitness.plan_transformer import mapDatabasePlanToCalendar, PlanParseError
         
         # Check if user has health profile
         health_svc = HealthDataService()
