@@ -31,6 +31,6 @@ app/instance/
 Thumbs.db
 
 # Video files
-app/video_out/
-app/video_in/
+app/exercises/video_out/
+app/exercises/video_in/
 
