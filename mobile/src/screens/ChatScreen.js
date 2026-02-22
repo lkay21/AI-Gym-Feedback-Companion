@@ -38,6 +38,13 @@ export default function ChatScreen({ navigation }) {
         <View style={styles.content}>
           <Text style={styles.title}>Welcome{username ? `, ${username}` : ''}!</Text>
           <Text style={styles.subtitle}>Chat functionality coming soon</Text>
+
+          <TouchableOpacity
+            style={styles.planButton}
+            onPress={() => navigation.navigate('Plan')}
+          >
+            <Text style={styles.planButtonText}>View Fitness Plan</Text>
+          </TouchableOpacity>
           
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutButtonText}>Logout</Text>
@@ -73,6 +80,18 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 40,
     textAlign: 'center',
+  },
+  planButton: {
+    backgroundColor: '#facc15',
+    borderRadius: 12,
+    padding: 16,
+    paddingHorizontal: 32,
+    marginBottom: 16,
+  },
+  planButtonText: {
+    color: '#1e1b4b',
+    fontSize: 16,
+    fontWeight: '700',
   },
   logoutButton: {
     backgroundColor: '#ffffff',

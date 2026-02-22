@@ -84,7 +84,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         }
         
         response = self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )
@@ -101,7 +101,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         }
         
         response = self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )
@@ -121,7 +121,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         }
         
         response = self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )
@@ -146,7 +146,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         }
         
         self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )
@@ -174,7 +174,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         }
         
         self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )
@@ -197,7 +197,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         }
         
         response = self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )
@@ -217,7 +217,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         }
         
         response = self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )
@@ -280,7 +280,7 @@ class TestIntegrationFlow(unittest.TestCase):
         
         # Send request
         response = self.client.post(
-            '/api/chat',
+            '/api/scaffolding/chat',
             data=json.dumps(payload),
             content_type='application/json'
         )

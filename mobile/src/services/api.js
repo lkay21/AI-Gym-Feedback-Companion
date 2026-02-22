@@ -101,6 +101,10 @@ export const chatAPI = {
       profile,
     });
   },
+  // Generate 2-week fitness plan from database (uses authenticated user's health profile)
+  generatePlan: async () => {
+    return await apiRequest('POST', '/api/chat/plan', {});
+  },
 };
 
 export default { request: apiRequest };

@@ -5,6 +5,7 @@ import re
 from flask import Blueprint, request, jsonify, session
 from typing import Dict, Any, Optional, Tuple, List
 from app.chat_module.gemini_client import GeminiClient
+from app.fitness.plan_transformer import mapLLMPlanToStructuredPlan, PlanParseError
 from app.profile_module.service import HealthDataService
 
 chat_bp = Blueprint('chat', __name__)
@@ -35,6 +36,19 @@ def validate_chat_request(data: Dict[str, Any]) -> Tuple[bool, str]:
     if len(message) > 2000:
         return False, "Message is too long (max 2000 characters)"
     
+    return True, None
+
+
+def validate_plan_request(data: Dict[str, Any]) -> Tuple[bool, str]:
+    """Validate plan generation request"""
+    is_valid, error_msg = validate_chat_request(data)
+    if not is_valid:
+        return is_valid, error_msg
+
+    start_date = data.get('startDate', '').strip() if isinstance(data, dict) else ''
+    if not start_date:
+        return False, "startDate is required"
+
     return True, None
 
 
@@ -245,6 +259,7 @@ def health_onboarding():
         return jsonify({'error': str(e), 'success': False}), 500
 
 
+
 @chat_bp.route('', methods=['POST'])
 def chat():
     """
@@ -322,6 +337,80 @@ def chat():
         return jsonify({
             'error': 'An unexpected error occurred',
             'details': str(e)
+        }), 500
+
+
+@chat_bp.route('/plan', methods=['POST'])
+def generate_plan():
+    """
+    Generate and retrieve a 2-week fitness plan from the database.
+    The fitness plan should already be generated and stored in DynamoDB.
+
+    Request body: {} (empty, uses authenticated user's health profile)
+    """
+    # Import here to avoid circular dependency
+    from app.fitness_plan_module.service import FitnessPlanService
+    from app.profile_module.service import HealthDataService
+    from app.fitness.plan_transformer import mapDatabasePlanToCalendar, PlanParseError
+    
+    try:
+        user_id = get_authenticated_user_id()
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        # Check if user has health profile
+        health_svc = HealthDataService()
+        health_profile = health_svc.get_health_profile(user_id)
+        if not health_profile:
+            return jsonify({
+                'error': 'No health profile found. Complete health onboarding first.',
+                'requiresOnboarding': True
+            }), 400
+        
+        health_dict = health_profile.to_dict()
+        if not health_dict.get('fitness_goal'):
+            return jsonify({
+                'error': 'Fitness goal not set. Complete health onboarding first.',
+                'requiresOnboarding': True
+            }), 400
+        
+        # Read fitness plan from DynamoDB
+        fp_svc = FitnessPlanService()
+        plan_objects = fp_svc.get_by_user(user_id)
+        
+        if not plan_objects:
+            return jsonify({
+                'error': 'No fitness plan found for user. Generate a plan first.',
+                'success': False
+            }), 404
+        
+        # Convert FitnessPlan objects to dictionaries
+        plan_entries = [plan.to_dict() for plan in plan_objects]
+        
+        # Transform to calendar format
+        structured_plan = mapDatabasePlanToCalendar(plan_entries)
+        
+        return jsonify({
+            'success': True,
+            'structuredPlan': structured_plan,
+            'message': f'Retrieved fitness plan with {len(plan_entries)} exercises.'
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({'error': str(e), 'success': False}), 401
+    except PlanParseError as e:
+        return jsonify({
+            'error': 'Failed to format fitness plan',
+            'details': str(e),
+            'success': False
+        }), 500
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': 'An unexpected error occurred',
+            'details': str(e),
+            'success': False
         }), 500
 
 

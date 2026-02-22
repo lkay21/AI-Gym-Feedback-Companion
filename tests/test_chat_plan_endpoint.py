@@ -104,6 +104,24 @@ def test_generate_plan_success(client, monkeypatch, mock_authenticated_user):
     class MockFitnessPlanService:
         def create(self, plan):
             pass
+        
+        def get_by_user(self, user_id):
+            """Return mock fitness plan objects for the user"""
+            start_date = date.today()
+            return [
+                MockFitnessPlan(
+                    user_id=user_id,
+                    workout_id=f"workout_{i}",
+                    date_of_workout=(start_date + timedelta(days=i)).isoformat(),
+                    exercise_name=f"Exercise {i+1}",
+                    exercise_description=f"Description for exercise {i+1}",
+                    rep_count=10,
+                    muscle_group="Chest" if i % 2 == 0 else "Back",
+                    expected_calories_burnt=50,
+                    weight_to_lift_suggestion=20
+                )
+                for i in range(14)  # 14 days of exercises
+            ]
     
     # Apply mocks
     monkeypatch.setattr("app.profile_module.service.HealthDataService", MockHealthDataService)
@@ -150,7 +168,7 @@ def test_generate_plan_success(client, monkeypatch, mock_authenticated_user):
     assert "structuredPlan" in payload
     assert payload["structuredPlan"]["planName"] == "Your 2-Week Fitness Plan"
     assert len(payload["structuredPlan"]["weeks"]) == 2  # 2 weeks
-    assert "Generated and saved" in payload["message"]
+    assert "Retrieved fitness plan with" in payload["message"]
 
 
 def test_generate_plan_no_health_profile(client, monkeypatch, mock_authenticated_user):
