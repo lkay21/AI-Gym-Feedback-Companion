@@ -4,11 +4,7 @@ Flask-CORS==4.0.0
 
 Werkzeug==3.0.3
 python-dotenv==1.0.1
-<<<<<<< HEAD
 google-generativeai>=0.8.0
-=======
-google-generativeai>=0.3.0
->>>>>>> 9909775f5dc4aa11eef0ea5a37642b756a9a08fc
 pytest>=7.0.0
 pytest-cov>=4.0.0
 httpx>=0.24.0,<0.28.0
