@@ -1,6 +1,8 @@
 import shutil
+import boto3
 import cv2 as cv
 import os
+from dotenv import load_dotenv
 import numpy as np
 import exercise as ex
 import time
@@ -10,6 +12,19 @@ from scipy.interpolate import interp1d
 import subprocess
 import os
 
+load_dotenv()
+    
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+REGION = os.getenv('AWS_REGION')
+
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    region_name=REGION)
+
+bucket_name = 'fitness-form-videos'
 
 # body parts and pose pairs for OpenPose (graph.opt)
 BODY_PARTS = { "Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
@@ -55,6 +70,8 @@ def generate_pose(file_path, joint_group, frame_vals):
     fourcc = cv.VideoWriter_fourcc(*'avc1')
 
     # directory to save output video and create output video writer (actual video work)
+
+    # TODO: need to update output path to S3 compatible path and add S3 upload functionality after video is written locally
     output_path = os.path.join(APP_DIR, 'video_out', os.path.basename(file_path))
     # output_path = os.path.join('static', 'pose_videos', os.path.basename(file_path))
 
@@ -150,6 +167,8 @@ def generate_pose(file_path, joint_group, frame_vals):
     out.release()
     cv.destroyAllWindows()
 
+    s3.upload_file(output_path, bucket_name, os.path.basename(output_path))
+
     return frame_count, fps, frame_width, frame_height
 
 def fetch_standard_data(joint, axis, exercise_name):
@@ -197,7 +216,7 @@ def score_func(score):
         
 
 
-def FormScore(example_path, user_path, exercise):
+def FormScore(user_path, exercise):
         
     exercise = exercise.replace(" ", "_").lower()
     exercise_obj = ex.Exercise.from_preset(exercise)
@@ -207,7 +226,7 @@ def FormScore(example_path, user_path, exercise):
         f"\nIsolated Movement: {exercise_obj.isolated_movement}"
         f"\nJoint Group: {exercise_obj.joint_group}\n")
 
-    example_vid = os.path.join(APP_DIR, "video_in", example_path)
+    # example_vid = os.path.join(APP_DIR, "video_in", example_path)
     user_vid = os.path.join(APP_DIR, "video_in", user_path)
 
     example_xs, example_ys = {}, {}
