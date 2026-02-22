@@ -30,7 +30,12 @@ app/instance/
 .DS_Store
 Thumbs.db
 
+<<<<<<< HEAD
+# Node modules
+node_modules/
+=======
 # Video files
-app/video_out/
-app/video_in/
+app/exercises/video_out/
+app/exercises/video_in/
 
+>>>>>>> 9909775f5dc4aa11eef0ea5a37642b756a9a08fc

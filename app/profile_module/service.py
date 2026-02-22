@@ -1,11 +1,13 @@
 """
 Service layer for CRUD operations on user profiles and health data
 """
+import json
+from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from botocore.exceptions import ClientError
 from app.dynamodb_module import get_dynamodb_resource, USER_PROFILES_TABLE, HEALTH_DATA_TABLE
-from app.profile_module.models import UserProfile, HealthData
+from app.profile_module.models import UserProfile, HealthData, HEALTH_PROFILE_TIMESTAMP
 
 
 class ProfileService:
@@ -39,44 +41,12 @@ class ProfileService:
             raise Exception(f"Failed to get profile: {str(e)}")
     
     def update_profile(self, user_id: str, updates: Dict[str, Any]) -> UserProfile:
-        """Update user profile with partial updates"""
-        try:
-            # Add updated_at timestamp
-            updates['updated_at'] = datetime.utcnow().isoformat()
-            
-            # Build update expression
-            update_expression_parts = []
-            expression_attribute_names = {}
-            expression_attribute_values = {}
-            
-            for key, value in updates.items():
-                if key == 'user_id':
-                    continue  # Skip user_id as it's the key
-                
-                placeholder = f"#{key}"
-                value_placeholder = f":{key}"
-                
-                update_expression_parts.append(f"{placeholder} = {value_placeholder}")
-                expression_attribute_names[placeholder] = key
-                expression_attribute_values[value_placeholder] = value
-            
-            update_expression = "SET " + ", ".join(update_expression_parts)
-            
-            # Handle fitness_goals as a list
-            if 'fitness_goals' in updates:
-                expression_attribute_values[":fitness_goals"] = updates['fitness_goals']
-            
-            response = self.table.update_item(
-                Key={'user_id': user_id},
-                UpdateExpression=update_expression,
-                ExpressionAttributeNames=expression_attribute_names,
-                ExpressionAttributeValues=expression_attribute_values,
-                ReturnValues='ALL_NEW'
-            )
-            
-            return UserProfile.from_dict(response['Attributes'])
-        except ClientError as e:
-            raise Exception(f"Failed to update profile: {str(e)}")
+        """Profile stores only user_id; no fields to update. Ensures profile exists and returns it."""
+        existing = self.get_profile(user_id)
+        if existing:
+            return existing
+        self.create_profile(UserProfile(user_id=user_id))
+        return self.get_profile(user_id)
     
     def delete_profile(self, user_id: str) -> bool:
         """Delete user profile"""
@@ -85,6 +55,17 @@ class ProfileService:
             return True
         except ClientError as e:
             raise Exception(f"Failed to delete profile: {str(e)}")
+
+
+def _decimalize_for_dynamodb(obj: Any) -> Any:
+    """Convert float to Decimal for DynamoDB; leave other types unchanged."""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    if isinstance(obj, dict):
+        return {k: _decimalize_for_dynamodb(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_decimalize_for_dynamodb(x) for x in obj]
+    return obj
 
 
 class HealthDataService:
@@ -97,8 +78,7 @@ class HealthDataService:
     def create_health_data(self, health_data: HealthData) -> HealthData:
         """Create a new health data entry"""
         try:
-            item = health_data.to_dict()
-            # Ensure timestamp is set
+            item = _decimalize_for_dynamodb(health_data.to_dict())
             if not item.get('timestamp'):
                 item['timestamp'] = datetime.utcnow().isoformat()
             
@@ -183,7 +163,7 @@ class HealthDataService:
                 
                 update_expression_parts.append(f"{placeholder} = {value_placeholder}")
                 expression_attribute_names[placeholder] = key
-                expression_attribute_values[value_placeholder] = value
+                expression_attribute_values[value_placeholder] = _decimalize_for_dynamodb(value)
             
             if not update_expression_parts:
                 raise ValueError("No updates provided")
@@ -217,4 +197,51 @@ class HealthDataService:
             return True
         except ClientError as e:
             raise Exception(f"Failed to delete health data: {str(e)}")
+
+    def get_health_profile(self, user_id: str) -> Optional[HealthData]:
+        """Get the user's health profile record (fixed stats + fitness_goal + context)."""
+        return self.get_health_data(user_id, HEALTH_PROFILE_TIMESTAMP)
+
+    def create_or_update_health_profile(
+        self,
+        user_id: str,
+        age: Optional[int] = None,
+        height: Optional[float] = None,
+        weight: Optional[float] = None,
+        gender: Optional[str] = None,
+        fitness_goal: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> HealthData:
+        """Create or update the health profile record (fixed stats, fitness_goal, context)."""
+        existing = self.get_health_profile(user_id)
+        updates = {}
+        if age is not None:
+            updates['age'] = age
+        if height is not None:
+            updates['height'] = height
+        if weight is not None:
+            updates['weight'] = weight
+        if gender is not None:
+            updates['gender'] = gender
+        if fitness_goal is not None:
+            updates['fitness_goal'] = fitness_goal
+        if context is not None:
+            # Store context as JSON string in DynamoDB for reliable persistence
+            updates['context'] = json.dumps(context) if isinstance(context, dict) else context
+        if existing:
+            if updates:
+                return self.update_health_data(user_id, HEALTH_PROFILE_TIMESTAMP, updates)
+            return existing
+        health_data = HealthData(
+            user_id=user_id,
+            timestamp=HEALTH_PROFILE_TIMESTAMP,
+            age=age,
+            height=height,
+            weight=weight,
+            gender=gender,
+            fitness_goal=fitness_goal,
+            context=context or {},
+        )
+        self.create_health_data(health_data)
+        return health_data
 

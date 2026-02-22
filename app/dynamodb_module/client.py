@@ -37,6 +37,7 @@ def _validate_aws_credentials():
 # DynamoDB Table Names
 USER_PROFILES_TABLE = os.getenv("DYNAMODB_USER_PROFILES_TABLE", "user_profiles")
 HEALTH_DATA_TABLE = os.getenv("DYNAMODB_HEALTH_DATA_TABLE", "health_data")
+FITNESS_PLAN_TABLE = os.getenv("DYNAMODB_FITNESS_PLAN_TABLE", "fitness_plan")
 
 def get_dynamodb_client():
     """Get DynamoDB client instance"""
@@ -130,3 +131,24 @@ def create_tables_if_not_exist():
         else:
             raise
 
+    # Fitness Plan Table: User ID = Partition Key (HASH), Workout ID = Sort Key (RANGE)
+    try:
+        table = dynamodb.create_table(
+            TableName=FITNESS_PLAN_TABLE,
+            KeySchema=[
+                {'AttributeName': 'user_id', 'KeyType': 'HASH'},   # Primary key (partition)
+                {'AttributeName': 'workout_id', 'KeyType': 'RANGE'} # Sort key
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'user_id', 'AttributeType': 'S'},
+                {'AttributeName': 'workout_id', 'AttributeType': 'S'}
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+        table.wait_until_exists()
+        print(f"Table {FITNESS_PLAN_TABLE} created successfully")
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceInUseException':
+            print(f"Table {FITNESS_PLAN_TABLE} already exists")
+        else:
+            raise

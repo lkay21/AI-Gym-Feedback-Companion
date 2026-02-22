@@ -1,1 +1,1 @@
-"""Fitness domain utilities."""
+"""Fitness module for AI Fitness Planner."""

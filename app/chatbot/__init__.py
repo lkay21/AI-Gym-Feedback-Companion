@@ -1,1 +1,1 @@
-# Chat module for AI chatbot functionality
+"""Chatbot module for AI Fitness Planner."""
