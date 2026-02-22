@@ -12,6 +12,7 @@ from app.auth_module.models import User  # Import User model so tables are creat
 from app.chat_module.routes import chat_bp
 from app.fitness_plan_module.routes import fitness_plan_bp
 from app.database.models import UserProfile
+from app.fitness_plan_module.routes import fitness_plan_bp
 from app.chatbot.ai_recommendations import get_ai_recommendation
 from app.fitness.benchmark_loader import load_fitness_benchmarks
 from app.logger import setup_logging, get_logger
