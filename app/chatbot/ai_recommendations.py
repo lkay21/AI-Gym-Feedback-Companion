@@ -6,7 +6,7 @@ Accepts structured user profiles and user messages, and returns
 personalized fitness advice.
 """
 
-from google import genai
+import google.generativeai as genai
 from app.database.models import UserProfile
 
 
@@ -32,7 +32,7 @@ def get_ai_recommendation(profile: UserProfile, message: str, api_key: str) -> s
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not set in environment variables")
     
-    client = genai.Client(api_key=api_key)
+    genai.configure(api_key=api_key)
     
     model_name = "gemini-1.5-flash"
     system_instruction = (
@@ -67,13 +67,11 @@ def get_ai_recommendation(profile: UserProfile, message: str, api_key: str) -> s
         full_prompt = message
     
     try:
-        response = client.models.generate_content(
-            model=model_name,
-            contents=full_prompt,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_instruction
-            )
+        model = genai.GenerativeModel(
+            model_name,
+            system_instruction=system_instruction
         )
+        response = model.generate_content(full_prompt)
         
         # Extract response text
         if hasattr(response, 'text') and response.text:
