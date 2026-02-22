@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, Tuple, List
 from app.chat_module.gemini_client import GeminiClient
 from app.profile_module.service import HealthDataService
 
-chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
+chat_bp = Blueprint('chat', __name__)
 
 # Order of fixed characteristics we collect before fitness goal
 FIXED_FIELD_QUESTIONS = [

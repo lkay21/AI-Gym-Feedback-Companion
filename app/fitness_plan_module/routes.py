@@ -153,6 +153,8 @@ def generate_plan():
         Expected Calories Burnt, Weight to be lifted (suggestion)
 
     Returns bullet-point summary and the saved fitness_plan objects.
+    Parse user health data from DynamoDB and generate a 2-week fitness plan.
+    Saves plan to fitness_plan table and returns bullet-point output for each entry.
     """
     try:
         user_id = _user_id()
