@@ -15,7 +15,7 @@ def main():
     from app.main import create_app
 
     app = create_app()
-    user_id = os.environ.get("USER_ID", "test-user-interactive1")
+    user_id = os.environ.get("USER_ID", "test-user-interactive2")
 
     with app.test_client() as client:
         with client.session_transaction() as sess:
