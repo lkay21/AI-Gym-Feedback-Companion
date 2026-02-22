@@ -343,65 +343,93 @@ def chat():
 @chat_bp.route('/plan', methods=['POST'])
 def generate_plan():
     """
-    Generate a structured fitness plan from the LLM response.
+    Generate and retrieve a 2-week fitness plan from the database.
+    This endpoint wraps /api/fitness-plan/generate and formats the result for the calendar.
 
-    Request body:
-    {
-        "message": "prompt to generate plan",
-        "conversation_history": [],
-        "profile": {},
-        "startDate": "YYYY-MM-DD"
-    }
+    Request body: {} (empty, uses authenticated user's health profile)
     """
     try:
-        data = request.get_json()
-        is_valid, error_msg = validate_plan_request(data)
-        if not is_valid:
-            return jsonify({'error': error_msg}), 400
-
-        message = data.get('message', '').strip()
-        conversation_history = data.get('conversation_history', [])
-        user_profile = data.get('profile', {})
-        start_date = data.get('startDate')
-
-        try:
-            gemini_client = GeminiClient()
-        except ValueError as e:
+        user_id = get_authenticated_user_id()
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        # Import here to avoid circular dependency
+        from app.fitness_plan_module.service import FitnessPlanService
+        from app.profile_module.service import HealthDataService
+        from app.fitness.plan_transformer import mapDatabasePlanToCalendar
+        
+        # Check if user has health profile
+        health_svc = HealthDataService()
+        health_profile = health_svc.get_health_profile(user_id)
+        if not health_profile:
             return jsonify({
-                'error': 'AI service is not configured properly',
-                'details': str(e)
-            }), 500
-
-        try:
-            response_text = gemini_client.generate_response(
-                user_message=message,
-                conversation_history=conversation_history,
-                user_profile=user_profile
+                'error': 'No health profile found. Complete health onboarding first.',
+                'requiresOnboarding': True
+            }), 400
+        
+        health_dict = health_profile.to_dict()
+        if not health_dict.get('fitness_goal'):
+            return jsonify({
+                'error': 'Fitness goal not set. Complete health onboarding first.',
+                'requiresOnboarding': True
+            }), 400
+        
+        # Generate 2-week plan using teammate's implementation
+        gemini_client = GeminiClient()
+        plan_entries = gemini_client.generate_two_week_fitness_plan(health_dict)
+        
+        if not plan_entries:
+            return jsonify({
+                'error': 'Could not generate fitness plan',
+                'success': False
+            }), 422
+        
+        # Save to database
+        fp_svc = FitnessPlanService()
+        saved_plans = []
+        for i, entry in enumerate(plan_entries):
+            date_val = entry.get('date_of_workout') or ''
+            workout_id = f"{date_val}-{i}"
+            
+            from app.fitness_plan_module.models import FitnessPlan
+            plan = FitnessPlan(
+                user_id=user_id,
+                workout_id=workout_id,
+                date_of_workout=entry.get('date_of_workout'),
+                exercise_name=entry.get('exercise_name'),
+                exercise_description=entry.get('exercise_description'),
+                rep_count=entry.get('rep_count'),
+                muscle_group=entry.get('muscle_group'),
+                expected_calories_burnt=entry.get('expected_calories_burnt'),
+                weight_to_lift_suggestion=entry.get('weight_to_lift_suggestion'),
             )
-
-            structured_plan = mapLLMPlanToStructuredPlan(response_text, start_date)
-
-            return jsonify({
-                'response': response_text,
-                'structuredPlan': structured_plan,
-                'success': True
-            }), 200
-        except PlanParseError as e:
-            return jsonify({
-                'error': 'Failed to parse fitness plan',
-                'details': str(e)
-            }), 500
-        except Exception as e:
-            return jsonify({
-                'error': 'Failed to generate fitness plan',
-                'details': str(e)
-            }), 500
+            fp_svc.create(plan)
+            saved_plans.append(plan.to_dict())
+        
+        # Transform to calendar format
+        structured_plan = mapDatabasePlanToCalendar(saved_plans)
+        
+        return jsonify({
+            'success': True,
+            'structuredPlan': structured_plan,
+            'message': f'Generated and saved {len(saved_plans)} exercises for your 2-week plan.'
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({'error': str(e), 'success': False}), 401
+    except PlanParseError as e:
+        return jsonify({
+            'error': 'Failed to format fitness plan',
+            'details': str(e),
+            'success': False
+        }), 500
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({
             'error': 'An unexpected error occurred',
-            'details': str(e)
+            'details': str(e),
+            'success': False
         }), 500
 
 

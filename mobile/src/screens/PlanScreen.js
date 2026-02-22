@@ -27,10 +27,14 @@ export default function PlanScreen() {
     setLoading(true);
     setError('');
     try {
-      const message = 'Create a structured 4-week fitness plan with workouts and rest days.';
-      const result = await chatAPI.generatePlan(message, {}, buildStartDate());
+      // Call the plan generation endpoint (uses authenticated user's health profile)
+      const result = await chatAPI.generatePlan();
 
       if (!result.success) {
+        // Check if user needs to complete health onboarding
+        if (result.data?.requiresOnboarding) {
+          throw new Error('Please complete your health profile first in the chat.');
+        }
         throw new Error(result.error || 'Failed to fetch plan');
       }
 
