@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify, session
 import boto3
 from dotenv import load_dotenv
 import os
-from openpose import generate_pose, FormScore, fetch_standard_data, get_standard_pose
+from openpose import generate_pose, FormScore, fetch_standard_data, get_standard_pose, user_output
 from exercise import Exercise, EXERCISE_PRESETS
 
 load_dotenv()
@@ -46,9 +46,10 @@ def parse_user_video(video_file, exercise):
 
     # Add to video_in
     # Call formscore with video path and exercise type
-    overall_score, joint_scores = FormScore(video_file, exercise, aws_upload=True)
+    output = user_output(video_file, exercise, aws_upload=True)
+    # overall_score, joint_scores = FormScore(video_file, exercise, aws_upload=True)
 
-    return overall_score, joint_scores
+    return output
 
 # given exercise and standard video, update standard data for exercise
 @exercises_bp.route('/update_standard_data', methods=['POST'])
