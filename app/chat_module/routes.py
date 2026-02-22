@@ -344,19 +344,19 @@ def chat():
 def generate_plan():
     """
     Generate and retrieve a 2-week fitness plan from the database.
-    This endpoint wraps /api/fitness-plan/generate and formats the result for the calendar.
+    The fitness plan should already be generated and stored in DynamoDB.
 
     Request body: {} (empty, uses authenticated user's health profile)
     """
+    # Import here to avoid circular dependency
+    from app.fitness_plan_module.service import FitnessPlanService
+    from app.profile_module.service import HealthDataService
+    from app.fitness.plan_transformer import mapDatabasePlanToCalendar, PlanParseError
+    
     try:
         user_id = get_authenticated_user_id()
         if not user_id:
             return jsonify({'error': 'Not authenticated'}), 401
-        
-        # Import here to avoid circular dependency
-        from app.fitness_plan_module.service import FitnessPlanService
-        from app.profile_module.service import HealthDataService
-        from app.fitness.plan_transformer import mapDatabasePlanToCalendar
         
         # Check if user has health profile
         health_svc = HealthDataService()
@@ -374,45 +374,26 @@ def generate_plan():
                 'requiresOnboarding': True
             }), 400
         
-        # Generate 2-week plan using teammate's implementation
-        gemini_client = GeminiClient()
-        plan_entries = gemini_client.generate_two_week_fitness_plan(health_dict)
-        
-        if not plan_entries:
-            return jsonify({
-                'error': 'Could not generate fitness plan',
-                'success': False
-            }), 422
-        
-        # Save to database
+        # Read fitness plan from DynamoDB
         fp_svc = FitnessPlanService()
-        saved_plans = []
-        for i, entry in enumerate(plan_entries):
-            date_val = entry.get('date_of_workout') or ''
-            workout_id = f"{date_val}-{i}"
-            
-            from app.fitness_plan_module.models import FitnessPlan
-            plan = FitnessPlan(
-                user_id=user_id,
-                workout_id=workout_id,
-                date_of_workout=entry.get('date_of_workout'),
-                exercise_name=entry.get('exercise_name'),
-                exercise_description=entry.get('exercise_description'),
-                rep_count=entry.get('rep_count'),
-                muscle_group=entry.get('muscle_group'),
-                expected_calories_burnt=entry.get('expected_calories_burnt'),
-                weight_to_lift_suggestion=entry.get('weight_to_lift_suggestion'),
-            )
-            fp_svc.create(plan)
-            saved_plans.append(plan.to_dict())
+        plan_objects = fp_svc.get_by_user(user_id)
+        
+        if not plan_objects:
+            return jsonify({
+                'error': 'No fitness plan found for user. Generate a plan first.',
+                'success': False
+            }), 404
+        
+        # Convert FitnessPlan objects to dictionaries
+        plan_entries = [plan.to_dict() for plan in plan_objects]
         
         # Transform to calendar format
-        structured_plan = mapDatabasePlanToCalendar(saved_plans)
+        structured_plan = mapDatabasePlanToCalendar(plan_entries)
         
         return jsonify({
             'success': True,
             'structuredPlan': structured_plan,
-            'message': f'Generated and saved {len(saved_plans)} exercises for your 2-week plan.'
+            'message': f'Retrieved fitness plan with {len(plan_entries)} exercises.'
         }), 200
         
     except ValueError as e:
