@@ -143,8 +143,16 @@ def _plan_entry_to_bullet(user_id: str, workout_id: str, p: dict) -> str:
 @fitness_plan_bp.route("/generate", methods=["POST"])
 def generate_plan():
     """
-    Parse user health data from DynamoDB and generate a 2-week fitness plan.
-    Saves plan to fitness_plan table and returns bullet-point output for each entry.
+    Convert the AI-generated 2-week workout plan into the Fitness Plan DB in DynamoDB.
+
+    Uses generate_two_week_fitness_plan() to get the plan from Gemini, then writes each
+    exercise to the fitness_plan table with:
+      - User ID: Partition Key (primary key)
+      - Workout ID: Sort Key (unique per user)
+      - Date of workout, Exercise Name, Exercise Description, Rep Count, Muscle Group,
+        Expected Calories Burnt, Weight to be lifted (suggestion)
+
+    Returns bullet-point summary and the saved fitness_plan objects.
     """
     try:
         user_id = _user_id()

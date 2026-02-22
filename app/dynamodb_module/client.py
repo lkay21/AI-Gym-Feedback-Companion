@@ -131,13 +131,13 @@ def create_tables_if_not_exist():
         else:
             raise
 
-    # Fitness Plan Table (user_id + workout_id, workout details per exercise)
+    # Fitness Plan Table: User ID = Partition Key (HASH), Workout ID = Sort Key (RANGE)
     try:
         table = dynamodb.create_table(
             TableName=FITNESS_PLAN_TABLE,
             KeySchema=[
-                {'AttributeName': 'user_id', 'KeyType': 'HASH'},
-                {'AttributeName': 'workout_id', 'KeyType': 'RANGE'}
+                {'AttributeName': 'user_id', 'KeyType': 'HASH'},   # Primary key (partition)
+                {'AttributeName': 'workout_id', 'KeyType': 'RANGE'} # Sort key
             ],
             AttributeDefinitions=[
                 {'AttributeName': 'user_id', 'AttributeType': 'S'},

@@ -1,7 +1,12 @@
 """
 Fitness Plan model for DynamoDB fitness_plan table.
-Schema: user_id (PK), workout_id (SK), date_of_workout, exercise_name, exercise_description,
-        rep_count, muscle_group, expected_calories_burnt, weight_to_lift_suggestion.
+
+Table key schema:
+  - User ID: Partition Key (primary key)
+  - Workout ID: Sort Key (unique per user)
+
+Attributes: date_of_workout, exercise_name, exercise_description, rep_count,
+            muscle_group, expected_calories_burnt, weight_to_lift_suggestion.
 """
 from decimal import Decimal  # DynamoDB returns Decimal for numbers
 from typing import Any, Dict, Optional
