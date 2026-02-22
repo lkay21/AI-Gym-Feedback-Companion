@@ -56,7 +56,7 @@ def test_chat_api_data_flow(monkeypatch, app):
         },
     }
 
-    response = client.post("/api/chat", json=payload)
+    response = client.post("/api/scaffolding/chat", json=payload)
 
     assert response.status_code == 200
     assert response.get_json() == {"response": "mocked response"}

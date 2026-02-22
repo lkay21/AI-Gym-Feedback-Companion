@@ -86,7 +86,7 @@ def create_app():
 
     # Register blueprints
     app.register_blueprint(auth_bp)
-    app.register_blueprint(chat_bp, url_prefix='/api/chatbot')
+    app.register_blueprint(chat_bp, url_prefix='/api/chat')
     app.register_blueprint(profile_bp)
     app.register_blueprint(fitness_plan_bp)
 
@@ -108,8 +108,8 @@ def create_app():
     def chat():
         return render_template('chat.html')
 
-    # API route for chat
-    @app.route('/api/chat', methods=['POST'])
+    # API route for scaffolding test (moved to separate endpoint to avoid blueprint conflict)
+    @app.route('/api/scaffolding/chat', methods=['POST'])
     def chat_api():
         try:
             data = request.get_json() or {}
