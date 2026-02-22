@@ -85,7 +85,7 @@ def create_app():
 
     # Register blueprints
     app.register_blueprint(auth_bp)
-    app.register_blueprint(chat_bp)
+    app.register_blueprint(chat_bp, url_prefix='/api/chatbot')
     app.register_blueprint(profile_bp)
     app.register_blueprint(fitness_plan_bp)
 
