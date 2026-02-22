@@ -5,7 +5,8 @@ from flask import Blueprint, request, jsonify, session
 from typing import Dict, Any, Optional, Tuple
 from datetime import date
 from app.chatbot.llm_service import generate_llm_response, validateFitnessPlanSchema
-from app.fitness.plan_transformer import mapLLMPlanToStructuredPlan
+from app.fitness.plan_transformer import mapLLMPlanToStructuredPlan, mapDatabasePlanToCalendar
+from app.fitness_plan_module.service import FitnessPlanService
 
 chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
 
@@ -123,39 +124,36 @@ def chat():
 
 @chat_bp.route('/init', methods=['POST'])
 def init_plan():
-    """Initialize a structured fitness plan from user inputs"""
+    """Initialize and retrieve the 2-week fitness plan from DynamoDB"""
     try:
-        data = request.get_json()
-        is_valid, error_msg = validate_init_plan_request(data)
-        if not is_valid:
-            return jsonify({'error': error_msg}), 400
+        user_id = get_authenticated_user_id()
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
 
-        prompt = build_init_plan_prompt(data)
-
-        result = generate_llm_response(
-            prompt=prompt,
-            context=[],
-            metadata={"expectFitnessPlan": True},
-        )
-
-        if not result["success"]:
-            return jsonify({"error": "Failed to generate plan"}), 500
-
-        validateFitnessPlanSchema(result["data"])
-
-        start_date = date.today().isoformat()
-        structured_plan = mapLLMPlanToStructuredPlan(result["data"], start_date)
+        # Retrieve the 2-week fitness plan from DynamoDB
+        fp_svc = FitnessPlanService()
+        plan_objects = fp_svc.get_by_user(user_id)
+        
+        if not plan_objects:
+            return jsonify({
+                'error': 'No fitness plan found for user. Generate a plan first.',
+                'success': False
+            }), 404
+        
+        # Convert FitnessPlan objects to dictionaries
+        plan_entries = [plan.to_dict() for plan in plan_objects]
+        
+        # Transform to calendar format
+        structured_plan = mapDatabasePlanToCalendar(plan_entries)
 
         return jsonify({
-            "success": True,
-            "data": structured_plan
+            'success': True,
+            'data': structured_plan
         }), 200
-    except ValueError as e:
-        return jsonify({"error": "Invalid plan format", "details": str(e)}), 500
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        return jsonify({'error': f'An error occurred: {str(e)}', 'success': False}), 500
 
 
 @chat_bp.route('/health', methods=['GET'])
