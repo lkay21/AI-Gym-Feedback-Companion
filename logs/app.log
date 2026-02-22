@@ -736,3 +736,147 @@ Traceback (most recent call last):
     raise RuntimeError("Critical error message")
 RuntimeError: Critical error message
 2026-02-22 16:03:18 | WARNING  | test.filter | warning message
+2026-02-22 16:32:58 | WARNING  | app.main | GEMINI_API_KEY not found in environment variables
+2026-02-22 16:32:58 | INFO     | app.main | Creating Flask application
+2026-02-22 16:32:58 | INFO     | app.main | Database initialized
+2026-02-22 16:32:58 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:03 | WARNING  | app.main | GEMINI_API_KEY not found in environment variables
+2026-02-22 16:33:03 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:03 | INFO     | app.main | Database initialized
+2026-02-22 16:33:03 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:03 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:03 | INFO     | app.main | Database initialized
+2026-02-22 16:33:03 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:03 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:03 | INFO     | app.main | Database initialized
+2026-02-22 16:33:03 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | WARNING  | app.main | GEMINI_API_KEY not found in environment variables
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | ERROR    | app.main | Failed to load fitness benchmarks: Benchmark load failed
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | User profile created: UserProfile(name=User, age=None, gender=None)
+2026-02-22 16:33:29 | ERROR    | app.main | Unexpected error in chat API: API call failed
+Traceback (most recent call last):
+  File "/Users/avalyall/Senior Design/AI_fitness_planner/app/main.py", line 128, in chat_api
+    response_text = get_ai_recommendation(
+        profile=profile,
+        message=message,
+        api_key=GEMINI_API_KEY
+    )
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py", line 1169, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py", line 1173, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.11/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py", line 1228, in _execute_mock_call
+    raise effect
+Exception: API call failed
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | User profile created: UserProfile(name=Alice, age=25, gender=female)
+2026-02-22 16:33:29 | INFO     | app.main | AI recommendation generated successfully for user: Alice
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | User profile created: UserProfile(name=User, age=None, gender=None)
+2026-02-22 16:33:29 | ERROR    | app.main | AI service not configured: GEMINI_API_KEY missing
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | WARNING  | app.main | Chat request received without message
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | User profile created: UserProfile(name=Test, age=None, gender=None)
+2026-02-22 16:33:29 | INFO     | app.main | AI recommendation generated successfully for user: Test
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | User profile created: UserProfile(name=Test User, age=30, gender=None)
+2026-02-22 16:33:29 | INFO     | app.main | AI recommendation generated successfully for user: Test User
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | User profile created: UserProfile(name=None, age=None, gender=None)
+2026-02-22 16:33:29 | INFO     | app.main | AI recommendation generated successfully for user: None
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:29 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:29 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:29 | INFO     | app.main | Database initialized
+2026-02-22 16:33:30 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:30 | INFO     | app.main | User profile created: UserProfile(name=John Doe, age=30, gender=male)
+2026-02-22 16:33:30 | INFO     | app.main | AI recommendation generated successfully for user: John Doe
+2026-02-22 16:33:30 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:30 | INFO     | app.main | Database initialized
+2026-02-22 16:33:30 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:30 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:30 | INFO     | app.main | Database initialized
+2026-02-22 16:33:30 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:30 | INFO     | app.main | Creating Flask application
+2026-02-22 16:33:30 | INFO     | app.main | Database initialized
+2026-02-22 16:33:30 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 16:33:30 | CRITICAL | test.levels | Test critical message
+2026-02-22 16:33:30 | DEBUG    | test.levels | Test debug message
+2026-02-22 16:33:30 | ERROR    | test.levels | Test error message
+2026-02-22 16:33:30 | INFO     | test.levels | Test info message
+2026-02-22 16:33:30 | WARNING  | test.levels | Test warning message
+2026-02-22 16:33:30 | ERROR    | test.exceptions | An error occurred
+Traceback (most recent call last):
+  File "/Users/avalyall/Senior Design/AI_fitness_planner/tests/test_logger.py", line 152, in test_error_with_exception_info
+    raise ValueError("Test exception")
+ValueError: Test exception
+2026-02-22 16:33:30 | WARNING  | test.content | Test warning
+2026-02-22 16:33:30 | ERROR    | app.auth_module.routes | Registration error: Database connection failed
+Traceback (most recent call last):
+  File "/Users/avalyall/Senior Design/AI_fitness_planner/tests/test_logger_examples.py", line 71, in test_registration_error_logged
+    raise Exception(error_message)
+Exception: Database connection failed
+2026-02-22 16:33:30 | WARNING  | app.auth_module.routes | Registration failed - missing fields for user: user
+2026-02-22 16:33:30 | ERROR    | app.database.models | Failed to save user newuser: Duplicate key error
+Traceback (most recent call last):
+  File "/Users/avalyall/Senior Design/AI_fitness_planner/tests/test_logger_examples.py", line 134, in test_save_user_error_logged
+    raise Exception(error_msg)
+Exception: Duplicate key error
+2026-02-22 16:33:30 | WARNING  | app.database.models | User not found: nonexistent
+2026-02-22 16:33:30 | ERROR    | app.api.handlers | API request to /api/users failed with 500: Internal server error
+Traceback (most recent call last):
+  File "/Users/avalyall/Senior Design/AI_fitness_planner/tests/test_logger_examples.py", line 245, in test_api_error_logged
+    raise Exception("Internal server error")
+Exception: Internal server error
+2026-02-22 16:33:30 | WARNING  | app.api.handlers | Primary service unavailable, using fallback
+2026-02-22 16:33:30 | WARNING  | app.api.handlers | Validation failed for email: Invalid format
+2026-02-22 16:33:30 | WARNING  | test.multi_level | Warning message
+2026-02-22 16:33:30 | ERROR    | test.multi_level | Error message
+2026-02-22 16:33:30 | CRITICAL | test.multi_level | Critical message
+2026-02-22 16:33:30 | ERROR    | test.exceptions | An error occurred
+Traceback (most recent call last):
+  File "/Users/avalyall/Senior Design/AI_fitness_planner/tests/test_logger_integration.py", line 197, in test_exception_logging
+    raise ValueError("Test error")
+ValueError: Test error
+2026-02-22 16:33:30 | ERROR    | test.exceptions | Operation failed
+Traceback (most recent call last):
+  File "/Users/avalyall/Senior Design/AI_fitness_planner/tests/test_logger_integration.py", line 207, in test_exception_message_preserved
+    raise RuntimeError("Critical error message")
+RuntimeError: Critical error message
+2026-02-22 16:33:30 | WARNING  | test.filter | warning message
