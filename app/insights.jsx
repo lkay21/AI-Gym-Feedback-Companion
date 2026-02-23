@@ -12,8 +12,9 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Path, Circle, Line } from "react-native-svg";
+import Svg, { Path, Circle } from "react-native-svg";
 import MenuDropdown from "../components/MenuDropdown";
+import { useRouter } from "expo-router";
 
 /**
  * Notes:
@@ -27,6 +28,7 @@ const TABS = ["Day", "Week", "Month", "Year", "All Time"];
 export default function InsightsScreen() {
   const [tab, setTab] = useState("Week");
   const [input, setInput] = useState("");
+  const router = useRouter();
 
   // Mock bar data (Week view)
   const bars = useMemo(
@@ -67,8 +69,8 @@ export default function InsightsScreen() {
   const handleSend = () => {
     const t = input.trim();
     if (!t) return;
-    // frontend-only: you can wire this to navigation/chat later
     setInput("");
+    router.push({ pathname: "/chatbot", params: { q: t } });
   };
 
   return (
@@ -88,37 +90,24 @@ export default function InsightsScreen() {
             {/* Top bar */}
             <View style={styles.topBar}>
               <Text style={styles.topLeftLabel}>Insights</Text>
-
-              <Pressable onPress={() => {}} style={styles.menuBtn}>
-                <Text style={styles.menuText}>Menu</Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={14}
-                  color="rgba(255,255,255,0.9)"
-                />
-              </Pressable>
+              <MenuDropdown />
             </View>
 
+            {/* Scrollable content (input pill is NOT inside this anymore) */}
             <ScrollView
+              style={{ flex: 1 }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
             >
               <Text style={styles.title}>Your Insights</Text>
 
               {/* Segmented control */}
-              <SegmentedControl
-                options={TABS}
-                value={tab}
-                onChange={setTab}
-              />
+              <SegmentedControl options={TABS} value={tab} onChange={setTab} />
 
               {/* Bar chart */}
               <View style={styles.chartWrap}>
-                <BarChart
-                  data={bars}
-                  goalPercent={0.62}
-                  goalLabel="Goal: 44 kg"
-                />
+                <BarChart data={bars} goalPercent={0.62} goalLabel="Goal: 44 kg" />
               </View>
 
               {/* Cards row 1 */}
@@ -175,7 +164,7 @@ export default function InsightsScreen() {
                   <View style={{ width: 170, alignItems: "center" }}>
                     <PieChart
                       size={150}
-                      innerRadius={0} // set to >0 for donut
+                      innerRadius={0}
                       data={workoutBreakdown}
                       strokeColor="rgba(255,255,255,0.20)"
                       strokeWidth={1}
@@ -194,25 +183,25 @@ export default function InsightsScreen() {
                   </View>
                 </View>
               </View>
-
-              {/* Bottom input pill */}
-              <View style={styles.inputWrap}>
-                <View style={styles.inputPill}>
-                  <TextInput
-                    value={input}
-                    onChangeText={setInput}
-                    placeholder="Enter Your Prompt Here..."
-                    placeholderTextColor="rgba(0,0,0,0.45)"
-                    style={styles.input}
-                    returnKeyType="send"
-                    onSubmitEditing={handleSend}
-                  />
-                  <Pressable onPress={handleSend} style={styles.sendBtn}>
-                    <Ionicons name="arrow-up" size={18} color="#fff" />
-                  </Pressable>
-                </View>
-              </View>
             </ScrollView>
+
+            {/* Bottom input pill (fixed + lifts above keyboard) */}
+            <View style={styles.inputWrap}>
+              <View style={styles.inputPill}>
+                <TextInput
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder="Enter Your Prompt Here..."
+                  placeholderTextColor="rgba(0,0,0,0.45)"
+                  style={styles.input}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSend}
+                />
+                <Pressable onPress={handleSend} style={styles.sendBtn}>
+                  <Ionicons name="arrow-up" size={18} color="#fff" />
+                </Pressable>
+              </View>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -250,7 +239,7 @@ function BarChart({ data, goalPercent = 0.6, goalLabel = "Goal" }) {
   return (
     <View style={styles.barChartCard}>
       <View style={styles.barChartArea}>
-        {/* Goal line (absolute positioned overlay) */}
+        {/* Goal line */}
         <View style={[styles.goalLine, { top: `${goalY * 100}%` }]}>
           <View style={styles.goalTag}>
             <Text style={styles.goalTagText}>{goalLabel}</Text>
@@ -321,9 +310,7 @@ function LegendRow({ color, label, value }) {
 function FlameIcon() {
   return <Ionicons name="flame" size={16} color="rgba(255,255,255,0.95)" />;
 }
-
 function FootprintsIcon() {
-  // Ionicons doesn’t have a perfect “footprints” icon; this is close.
   return <Ionicons name="footsteps" size={16} color="rgba(255,255,255,0.95)" />;
 }
 
@@ -389,26 +376,24 @@ function PieChart({
         const sweep = (slice.value / total) * 360;
         const endAngle = startAngle + sweep;
 
-        const path = rInner > 0
-          ? describeDonutSlice(center.x, center.y, rOuter, rInner, startAngle, endAngle)
-          : describePieSlice(center.x, center.y, rOuter, startAngle, endAngle);
+        const path =
+          rInner > 0
+            ? describeDonutSlice(center.x, center.y, rOuter, rInner, startAngle, endAngle)
+            : describePieSlice(center.x, center.y, rOuter, startAngle, endAngle);
 
-        const key = `${slice.label}_${slice.value}`;
-        const p = (
+        startAngle = endAngle;
+
+        return (
           <Path
-            key={key}
+            key={`${slice.label}_${slice.value}`}
             d={path}
             fill={slice.color}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
           />
         );
-
-        startAngle = endAngle;
-        return p;
       })}
 
-      {/* optional center cutout for donut */}
       {rInner > 0 ? (
         <Circle cx={center.x} cy={center.y} r={rInner} fill="rgba(255,255,255,0.08)" />
       ) : null}
@@ -420,10 +405,7 @@ function PieChart({
 
 function polarToCartesian(cx, cy, r, angleDeg) {
   const a = (Math.PI / 180) * angleDeg;
-  return {
-    x: cx + r * Math.cos(a),
-    y: cy + r * Math.sin(a),
-  };
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
 }
 
 function describePieSlice(cx, cy, r, startAngle, endAngle) {
@@ -492,25 +474,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0.2,
   },
-  menuBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  menuText: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 12,
-  },
 
+  // IMPORTANT: give room for the fixed input pill
   scrollContent: {
-    paddingBottom: 14,
     paddingHorizontal: 4,
+    paddingBottom: 18,
   },
 
   title: {
@@ -751,10 +719,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  /* Input pill */
+  /* Fixed input pill */
   inputWrap: {
-    marginTop: 14,
-    paddingBottom: 6,
+    paddingTop: 10,
+    paddingBottom: 14,
+    paddingHorizontal: 2,
   },
   inputPill: {
     flexDirection: "row",

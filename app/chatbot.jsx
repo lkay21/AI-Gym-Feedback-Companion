@@ -1,22 +1,25 @@
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import MenuDropdown from "../components/MenuDropdown";
 
 const BOT_NAME = "Fred";
 
 export default function ChatBotScreen() {
+  const router = useRouter();
+  const { q } = useLocalSearchParams();
   const listRef = useRef(null);
 
   const initialMessages = useMemo(
@@ -58,9 +61,7 @@ export default function ChatBotScreen() {
       {
         id: "m15",
         role: "bot",
-        text:
-          "Go to the Fitness Dashboard to see\n" +
-          "your detailed fitness plan!",
+        text: "Go to the Fitness Dashboard to see\nyour detailed fitness plan!",
       },
       {
         id: "m16",
@@ -125,21 +126,14 @@ export default function ChatBotScreen() {
     );
   };
 
-  const handleSend = () => {
-    const trimmed = input.trim();
+  const sendText = (text) => {
+    const trimmed = String(text ?? "").trim();
     if (!trimmed) return;
 
-    const userMsg = {
-      id: `u_${Date.now()}`,
-      role: "user",
-      text: trimmed,
-    };
-
+    const userMsg = { id: `u_${Date.now()}`, role: "user", text: trimmed };
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
     scrollToBottom();
 
-    // Mock “chatbot response” (frontend-only)
     setTimeout(() => {
       const botMsg = {
         id: `b_${Date.now()}`,
@@ -151,16 +145,38 @@ export default function ChatBotScreen() {
     }, 450);
   };
 
+  const lastQRef = useRef(null);
+
+    useEffect(() => {
+        if (!q) return;
+
+        const incoming = Array.isArray(q) ? q[0] : q;
+        const trimmed = String(incoming ?? "").trim();
+        if (!trimmed) return;
+
+        if (lastQRef.current === trimmed) return;
+        lastQRef.current = trimmed;
+
+        sendText(trimmed);
+
+        setTimeout(() => {
+            router.replace("/chatbot");
+        }, 0);
+    }, [q]);
+
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    setInput("");
+    sendText(trimmed);
+  };
+
   const renderItem = ({ item }) => {
     const isUser = item.role === "user";
     const isHeadline = item.kind === "headline";
 
     if (isHeadline) {
-      return (
-        <Text style={styles.headline}>
-          {item.text}
-        </Text>
-      );
+      return <Text style={styles.headline}>{item.text}</Text>;
     }
 
     return (
@@ -190,9 +206,7 @@ export default function ChatBotScreen() {
           <View style={styles.card}>
             <View style={styles.topBar}>
               <Text style={styles.screenTitle}>ChatBot Screen</Text>
-             
               <MenuDropdown />
-
             </View>
 
             <FlatList
@@ -216,7 +230,6 @@ export default function ChatBotScreen() {
                   returnKeyType="send"
                   onSubmitEditing={handleSend}
                 />
-
                 <Pressable onPress={handleSend} style={styles.sendBtn}>
                   <Ionicons name="arrow-up" size={18} color="#fff" />
                 </Pressable>
@@ -258,21 +271,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
     fontSize: 14,
     letterSpacing: 0.2,
-  },
-  menuBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  menuText: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 12,
   },
 
   listContent: {

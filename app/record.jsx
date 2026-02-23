@@ -1,30 +1,24 @@
-import React from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Image,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RecordVideoScreen() {
+  const router = useRouter();
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <LinearGradient
         colors={["#8E5AAE", "#4C76D6"]}
         start={{ x: 0.05, y: 0.05 }}
         end={{ x: 0.95, y: 0.95 }}
         style={styles.bg}
       >
-        {/* Top label (subtle like your other screens) */}
         <View style={styles.topLabelWrap}>
           <Text style={styles.topLabel}>CV Processing Screen</Text>
         </View>
 
-        {/* Main card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.title}>Record a Video</Text>
@@ -40,7 +34,6 @@ export default function RecordVideoScreen() {
             the recording!
           </Text>
 
-          {/* Video preview frame (placeholder image) */}
           <View style={styles.previewFrame}>
             <Image
               source={{
@@ -50,11 +43,9 @@ export default function RecordVideoScreen() {
               style={styles.previewImg}
               resizeMode="cover"
             />
-            {/* Optional overlay tint to match screenshot */}
             <View style={styles.previewTint} pointerEvents="none" />
           </View>
 
-          {/* Guidance text */}
           <View style={styles.guidanceWrap}>
             <Text style={styles.guidanceTitle}>Step Further Back!</Text>
             <Text style={styles.guidanceText}>
@@ -62,12 +53,15 @@ export default function RecordVideoScreen() {
             </Text>
           </View>
 
-          {/* Bottom buttons */}
           <View style={styles.btnRow}>
             <Pressable style={styles.pillBtn} onPress={() => {}}>
               <Text style={styles.pillBtnText}>Re-record Video</Text>
             </Pressable>
-            <Pressable style={styles.pillBtn} onPress={() => {}}>
+
+            <Pressable
+              style={styles.pillBtn}
+              onPress={() => router.push("/selectexercise")}
+            >
               <Text style={styles.pillBtnText}>Upload Video</Text>
             </Pressable>
           </View>
@@ -81,16 +75,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#000" },
   bg: { flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 18 },
 
-  topLabelWrap: {
-    alignItems: "flex-start",
-    paddingHorizontal: 6,
-    paddingBottom: 8,
-  },
-  topLabel: {
-    color: "rgba(255,255,255,0.35)",
-    fontSize: 13,
-    fontWeight: "800",
-  },
+  topLabelWrap: { alignItems: "flex-start", paddingHorizontal: 6, paddingBottom: 8 },
+  topLabel: { color: "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: "800" },
 
   card: {
     flex: 1,
@@ -108,12 +94,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 6,
   },
-  title: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "900",
-    textAlign: "center",
-  },
+  title: { color: "#fff", fontSize: 22, fontWeight: "900", textAlign: "center" },
   subtitle: {
     color: "rgba(255,255,255,0.75)",
     fontSize: 11,
@@ -132,37 +113,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
   },
-  previewImg: {
-    width: "100%",
-    height: "100%",
-  },
-  previewTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(142, 90, 174, 0.20)", // subtle purple tint like screenshot
-  },
+  previewImg: { width: "100%", height: "100%" },
+  previewTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(142, 90, 174, 0.20)" },
 
-  guidanceWrap: {
-    marginTop: 12,
-    paddingHorizontal: 4,
-  },
-  guidanceTitle: {
-    color: "rgba(255,255,255,0.95)",
-    fontSize: 12,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  guidanceText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  guidanceWrap: { marginTop: 12, paddingHorizontal: 4 },
+  guidanceTitle: { color: "rgba(255,255,255,0.95)", fontSize: 12, fontWeight: "900", marginBottom: 6 },
+  guidanceText: { color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "700" },
 
-  btnRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    marginTop: 14,
-  },
+  btnRow: { flexDirection: "row", justifyContent: "space-between", gap: 12, marginTop: 14 },
   pillBtn: {
     flex: 1,
     height: 32,
@@ -173,9 +131,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.14)",
   },
-  pillBtnText: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 11,
-    fontWeight: "900",
-  },
+  pillBtnText: { color: "rgba(255,255,255,0.92)", fontSize: 11, fontWeight: "900" },
 });
