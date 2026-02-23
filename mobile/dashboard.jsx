@@ -1,21 +1,21 @@
 
-import React, { useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
+  Image,
   KeyboardAvoidingView,
   Platform,
-  Image,
+  Pressable,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import MenuDropdown from "../components/MenuDropdown";
+import MenuDropdown from "./components/MenuDropdown";
 
 // ---- dummy data (replace later) ----
 const WEEK_RANGE = "12/9/2025 - 12/15/2025";

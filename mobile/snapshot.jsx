@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   Image,
@@ -14,8 +15,7 @@ import {
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MenuDropdown from "../components/MenuDropdown";
-import { useRouter } from "expo-router";
+import MenuDropdown from "./components/MenuDropdown";
 
 const DAY_PILLS = [
   { k: "sat", label: "Sat", num: "7" },
