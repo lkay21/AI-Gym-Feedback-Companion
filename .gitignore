@@ -15,6 +15,7 @@ expo-env.d.ts
 *.jks
 *.p8
 *.p12
+*.pyc
 *.key
 *.mobileprovision
 
@@ -30,9 +31,10 @@ yarn-error.*
 .DS_Store
 *.pem
 
+<<<<<<< HEAD
 # local env files
 .env*.local
-
+.env
 # typescript
 *.tsbuildinfo
 
@@ -41,3 +43,14 @@ app-example
 # generated native folders
 /ios
 /android
+=======
+<<<<<<< HEAD
+# Node modules
+node_modules/
+=======
+# Video files
+app/exercises/video_out/
+app/exercises/video_in/
+
+>>>>>>> 9909775f5dc4aa11eef0ea5a37642b756a9a08fc
+>>>>>>> origin/develop
