@@ -880,3 +880,59 @@ Traceback (most recent call last):
     raise RuntimeError("Critical error message")
 RuntimeError: Critical error message
 2026-02-22 16:33:30 | WARNING  | test.filter | warning message
+2026-02-22 21:22:39 | WARNING  | app.main | GEMINI_API_KEY not found in environment variables
+2026-02-22 21:22:39 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:39 | INFO     | app.main | Database initialized
+2026-02-22 21:22:39 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:39 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:39 | INFO     | app.main | Database initialized
+2026-02-22 21:22:39 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:39 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:39 | INFO     | app.main | Database initialized
+2026-02-22 21:22:39 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:40 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:40 | INFO     | app.main | Database initialized
+2026-02-22 21:22:40 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:40 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:40 | INFO     | app.main | Database initialized
+2026-02-22 21:22:40 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:40 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:40 | INFO     | app.main | Database initialized
+2026-02-22 21:22:40 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:40 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:40 | INFO     | app.main | Database initialized
+2026-02-22 21:22:40 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:40 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:40 | INFO     | app.main | Database initialized
+2026-02-22 21:22:40 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:22:40 | INFO     | app.main | Creating Flask application
+2026-02-22 21:22:40 | INFO     | app.main | Database initialized
+2026-02-22 21:22:40 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | WARNING  | app.main | GEMINI_API_KEY not found in environment variables
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup
+2026-02-22 21:23:06 | INFO     | app.main | Creating Flask application
+2026-02-22 21:23:06 | INFO     | app.main | Database initialized
+2026-02-22 21:23:06 | INFO     | app.main | Fitness benchmarks loaded successfully on startup

@@ -11,6 +11,7 @@ from app.profile_module.routes import profile_bp
 from app.auth_module.models import User  # Import User model so tables are created
 from app.chat_module.routes import chat_bp
 from app.fitness_plan_module.routes import fitness_plan_bp
+from app.workout_snapshot.routes import workout_snapshot_bp
 from app.database.models import UserProfile
 from app.fitness_plan_module.routes import fitness_plan_bp
 from app.chatbot.ai_recommendations import get_ai_recommendation
@@ -89,6 +90,7 @@ def create_app():
     app.register_blueprint(chat_bp, url_prefix='/api/chat')
     app.register_blueprint(profile_bp)
     app.register_blueprint(fitness_plan_bp)
+    app.register_blueprint(workout_snapshot_bp)
 
     # Load fitness benchmarks on startup for integration verification
     try:
