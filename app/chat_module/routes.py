@@ -439,4 +439,3 @@ def health_check():
             'service': 'chat',
             'error': str(e)
         }), 500
-
