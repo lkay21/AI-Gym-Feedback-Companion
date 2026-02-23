@@ -1,6 +1,7 @@
 from functools import wraps
-from flask import session, jsonify
+from flask import session
 from app.db_instance import db
+from app.core.errors import UnauthorizedError
 from .models import User
 
 def login_required(f):
@@ -9,7 +10,7 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         user_id = session.get('user_id')
         if not user_id:
-            return jsonify({'error': 'Authentication required'}), 401
+            raise UnauthorizedError("Authentication required")
         return f(*args, **kwargs)
     return decorated_function
 

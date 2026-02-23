@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 
 from app.dynamodb_module import FITNESS_PLAN_TABLE, get_dynamodb_resource
 from app.fitness_plan_module.models import FitnessPlan
+from app.core.errors import NotFoundError
 
 
 def _decimalize(obj: Any) -> Any:
@@ -81,7 +82,7 @@ class FitnessPlanService:
             if not updates:
                 existing = self.get(user_id, workout_id)
                 if existing is None:
-                    raise ValueError("Fitness plan entry not found")
+                    raise NotFoundError("Fitness plan entry not found")
                 return existing
             names = {}
             values = {}

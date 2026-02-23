@@ -109,6 +109,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertIn('error', data)
+        self.assertIn('message', data['error'])
     
     @patch('app.main.get_ai_recommendation')
     def test_chat_api_with_minimal_profile(self, mock_ai):
@@ -204,7 +205,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         
         self.assertEqual(response.status_code, 500)
         data = json.loads(response.data)
-        self.assertIn('AI service is not configured', data['error'])
+        self.assertIn('AI service is not configured', data['error']['message'])
     
     @patch('app.main.get_ai_recommendation')
     def test_chat_api_ai_error_handling(self, mock_ai):
@@ -225,6 +226,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         data = json.loads(response.data)
         self.assertIn('error', data)
+        self.assertIn('message', data['error'])
 
 
 class TestFrontendRoutes(unittest.TestCase):

@@ -7,6 +7,7 @@ from app.chat_module.gemini_client import GeminiClient
 from app.fitness_plan_module.models import FitnessPlan
 from app.fitness_plan_module.service import FitnessPlanService
 from app.profile_module.service import HealthDataService
+from app.core.errors import AppError, ValidationError, UnauthorizedError, NotFoundError, DatabaseError
 
 fitness_plan_bp = Blueprint(
     "fitness_plan", __name__, url_prefix="/api/fitness-plan"
@@ -16,7 +17,7 @@ fitness_plan_bp = Blueprint(
 def _user_id():
     uid = session.get("user_id")
     if not uid:
-        raise ValueError("Not authenticated")
+        raise UnauthorizedError("Not authenticated")
     return uid
 
 
@@ -35,10 +36,12 @@ def list_plans():
                 "count": len(items),
             }
         ), 200
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({"error": str(e)}), 401
+        raise UnauthorizedError(str(e))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise DatabaseError("Failed to list fitness plans") from e
 
 
 @fitness_plan_bp.route("", methods=["POST"])
@@ -49,7 +52,7 @@ def create_plan():
         data = request.get_json() or {}
         workout_id = data.get("workout_id")
         if not workout_id:
-            return jsonify({"error": "workout_id is required"}), 400
+            raise ValidationError("workout_id is required")
         plan = FitnessPlan(
             user_id=user_id,
             workout_id=str(workout_id),
@@ -63,10 +66,12 @@ def create_plan():
         )
         FitnessPlanService().create(plan)
         return jsonify({"message": "Created", "fitness_plan": plan.to_dict()}), 201
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({"error": str(e)}), 401
+        raise UnauthorizedError(str(e))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise DatabaseError("Failed to create fitness plan") from e
 
 
 @fitness_plan_bp.route("/<workout_id>", methods=["GET"])
@@ -77,12 +82,14 @@ def get_plan(workout_id: str):
         svc = FitnessPlanService()
         plan = svc.get(user_id, workout_id)
         if not plan:
-            return jsonify({"error": "Not found", "fitness_plan": None}), 404
+            raise NotFoundError("Fitness plan not found")
         return jsonify({"fitness_plan": plan.to_dict()}), 200
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({"error": str(e)}), 401
+        raise UnauthorizedError(str(e))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise DatabaseError("Failed to fetch fitness plan") from e
 
 
 @fitness_plan_bp.route("/<workout_id>", methods=["PUT"])
@@ -92,7 +99,7 @@ def update_plan(workout_id: str):
         user_id = _user_id()
         data = request.get_json() or {}
         if not data:
-            return jsonify({"error": "No body"}), 400
+            raise ValidationError("No body")
         allowed = {
             "date_of_workout",
             "exercise_name",
@@ -105,10 +112,12 @@ def update_plan(workout_id: str):
         updates = {k: v for k, v in data.items() if k in allowed and v is not None}
         plan = FitnessPlanService().update(user_id, workout_id, updates)
         return jsonify({"message": "Updated", "fitness_plan": plan.to_dict()}), 200
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({"error": str(e)}), 401
+        raise UnauthorizedError(str(e))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise DatabaseError("Failed to update fitness plan") from e
 
 
 @fitness_plan_bp.route("/<workout_id>", methods=["DELETE"])
@@ -118,10 +127,12 @@ def delete_plan(workout_id: str):
         user_id = _user_id()
         FitnessPlanService().delete(user_id, workout_id)
         return jsonify({"message": "Deleted"}), 200
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({"error": str(e)}), 401
+        raise UnauthorizedError(str(e))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise DatabaseError("Failed to delete fitness plan") from e
 
 
 def _plan_entry_to_bullet(user_id: str, workout_id: str, p: dict) -> str:
@@ -161,18 +172,16 @@ def generate_plan():
         health_svc = HealthDataService()
         health_profile = health_svc.get_health_profile(user_id)
         if not health_profile:
-            return jsonify({
-                "error": "No health profile found. Complete health onboarding first (age, height, weight, gender, fitness goal).",
-            }), 400
+            raise ValidationError(
+                "No health profile found. Complete health onboarding first (age, height, weight, gender, fitness goal)."
+            )
         health_dict = health_profile.to_dict()
         if not health_dict.get("fitness_goal"):
-            return jsonify({
-                "error": "Fitness goal not set. Complete health onboarding first.",
-            }), 400
+            raise ValidationError("Fitness goal not set. Complete health onboarding first.")
         gemini = GeminiClient()
         plan_entries = gemini.generate_two_week_fitness_plan(health_dict)
         if not plan_entries:
-            return jsonify({"error": "Could not generate plan", "bullet_points": [], "fitness_plans": []}), 422
+            raise DatabaseError("Could not generate plan")
         fp_svc = FitnessPlanService()
         saved = []
         bullets = []
@@ -200,9 +209,11 @@ def generate_plan():
             "fitness_plans": saved,
             "count": len(saved),
         }), 200
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({"error": str(e)}), 401
+        raise UnauthorizedError(str(e))
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        raise DatabaseError("Failed to generate fitness plan") from e

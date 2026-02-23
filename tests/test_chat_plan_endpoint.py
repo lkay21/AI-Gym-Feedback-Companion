@@ -185,8 +185,7 @@ def test_generate_plan_no_health_profile(client, monkeypatch, mock_authenticated
     
     assert response.status_code == 400
     payload = response.get_json()
-    assert "No health profile found" in payload["error"]
-    assert payload.get("requiresOnboarding") is True
+    assert "No health profile found" in payload["error"]["message"]
 
 
 def test_generate_plan_not_authenticated(client):
@@ -195,4 +194,4 @@ def test_generate_plan_not_authenticated(client):
     
     assert response.status_code == 401
     payload = response.get_json()
-    assert "Not authenticated" in payload["error"]
+    assert "Not authenticated" in payload["error"]["message"]

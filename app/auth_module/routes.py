@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session
+from app.core.errors import AppError, ValidationError, UnauthorizedError, DatabaseError, NotFoundError
 from .supabase_client import get_supabase_client
 import re
 
@@ -30,7 +31,7 @@ def register():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            raise ValidationError("No data provided")
         
         username = data.get('username', '').strip()
         email = data.get('email', '').strip().lower()
@@ -38,21 +39,21 @@ def register():
 
         # Validation
         if not username or not email or not password:
-            return jsonify({'error': 'Username, email, and password are required'}), 400
+            raise ValidationError("Username, email, and password are required")
 
         # Validate username
         is_valid, error_msg = validate_username(username)
         if not is_valid:
-            return jsonify({'error': error_msg}), 400
+            raise ValidationError(error_msg)
 
         # Validate email
         if not validate_email(email):
-            return jsonify({'error': 'Invalid email format'}), 400
+            raise ValidationError("Invalid email format")
 
         # Validate password
         is_valid, error_msg = validate_password(password)
         if not is_valid:
-            return jsonify({'error': error_msg}), 400
+            raise ValidationError(error_msg)
 
         # Get Supabase client
         try:
@@ -60,10 +61,10 @@ def register():
         except ValueError as e:
             # Supabase credentials not configured
             print(f"Supabase configuration error: {str(e)}")
-            return jsonify({'error': 'Server configuration error. Please contact administrator.'}), 500
+            raise DatabaseError("Server configuration error. Please contact administrator.")
         except Exception as e:
             print(f"Supabase client error: {str(e)}")
-            return jsonify({'error': 'Server configuration error. Please contact administrator.'}), 500
+            raise DatabaseError("Server configuration error. Please contact administrator.")
 
         # Sign up user with Supabase
         # Store username in user metadata
@@ -110,20 +111,22 @@ def register():
                     }
                 }), 201
         else:
-            return jsonify({'error': 'Registration failed'}), 500
+            raise DatabaseError("Registration failed")
 
+    except AppError:
+        raise
     except Exception as e:
         error_message = str(e)
         # Handle Supabase-specific errors
         if 'User already registered' in error_message or 'already registered' in error_message.lower():
-            return jsonify({'error': 'Email already registered'}), 400
+            raise ValidationError("Email already registered")
         elif 'Password' in error_message:
-            return jsonify({'error': 'Password does not meet requirements'}), 400
+            raise ValidationError("Password does not meet requirements")
         
         import traceback
         print(f"Registration error: {error_message}")
         traceback.print_exc()
-        return jsonify({'error': f'Registration failed: {error_message}'}), 500
+        raise DatabaseError(f"Registration failed: {error_message}")
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -131,25 +134,25 @@ def login():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            raise ValidationError("No data provided")
 
         username_or_email = data.get('username', '').strip()
         password = data.get('password', '')
 
         if not username_or_email or not password:
-            return jsonify({'error': 'Username/email and password are required'}), 400
+            raise ValidationError("Username/email and password are required")
 
         # Get Supabase client
         try:
             supabase = get_supabase_client()
         except ValueError as e:
             # Supabase credentials not configured
-            return jsonify({'error': 'Server configuration error. Please contact administrator.'}), 500
+            raise DatabaseError("Server configuration error. Please contact administrator.")
         except Exception as e:
             import traceback
             print(f"Supabase client error: {str(e)}")
             traceback.print_exc()
-            return jsonify({'error': 'Server configuration error. Please contact administrator.'}), 500
+            raise DatabaseError("Server configuration error. Please contact administrator.")
 
         # Supabase uses email for login, so if username is provided, we need to look it up
         # For now, assume the input is email (we can enhance this later with a username lookup table)
@@ -166,15 +169,15 @@ def login():
             # Check for specific Supabase errors
             if 'Invalid login credentials' in error_msg or 'invalid' in error_msg.lower():
                 # Expected error - don't print full traceback
-                return jsonify({'error': 'Invalid email or password'}), 401
+                raise UnauthorizedError("Invalid email or password")
             elif 'Email not confirmed' in error_msg:
-                return jsonify({'error': 'Please confirm your email before logging in'}), 401
+                raise UnauthorizedError("Please confirm your email before logging in")
             else:
                 # Unexpected error - log it
                 import traceback
                 print(f"Login error: {error_msg}")
                 traceback.print_exc()
-                return jsonify({'error': 'Login failed. Please try again.'}), 500
+                raise DatabaseError("Login failed. Please try again.")
 
         if response.user and response.session:
             # Get username from user metadata
@@ -198,19 +201,21 @@ def login():
                 }
             }), 200
         else:
-            return jsonify({'error': 'Invalid email or password'}), 401
+            raise UnauthorizedError("Invalid email or password")
 
+    except AppError:
+        raise
     except Exception as e:
         error_message = str(e)
         # Handle Supabase-specific errors
         if 'Invalid login credentials' in error_message or 'invalid' in error_message.lower():
-            return jsonify({'error': 'Invalid email or password'}), 401
+            raise UnauthorizedError("Invalid email or password")
         
         # Unexpected error - log it
         import traceback
         print(f"Login error: {error_message}")
         traceback.print_exc()
-        return jsonify({'error': 'Login failed. Please try again.'}), 500
+        raise DatabaseError("Login failed. Please try again.")
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -274,7 +279,7 @@ def get_user():
     try:
         access_token = session.get('access_token')
         if not access_token:
-            return jsonify({'error': 'Not authenticated'}), 401
+            raise UnauthorizedError("Not authenticated")
         
         # Get user from Supabase
         supabase = get_supabase_client()
@@ -283,7 +288,7 @@ def get_user():
         
         if not user:
             session.clear()
-            return jsonify({'error': 'User not found'}), 404
+            raise NotFoundError("User not found")
         
         username = user.user.user_metadata.get('username', session.get('username', ''))
         return jsonify({
@@ -294,6 +299,8 @@ def get_user():
                 'created_at': user.user.created_at
             }
         }), 200
+    except AppError:
+        raise
     except Exception as e:
         session.clear()
-        return jsonify({'error': 'Not authenticated'}), 401
+        raise UnauthorizedError("Not authenticated") from e

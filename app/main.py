@@ -11,6 +11,8 @@ from app.chat_module.routes import chat_bp as chat_module_bp
 from app.fitness.benchmark_loader import load_fitness_benchmarks
 from app.chatbot.ai_recommendations import get_ai_recommendation
 from app.logger import get_logger
+from app.core.error_handling import register_error_handlers
+from app.core.errors import AppError, ValidationError, DatabaseError
 from app.database.models import UserProfile
 
 # Initialize logger
@@ -41,6 +43,7 @@ def create_app():
     os.makedirs(instance_path, exist_ok=True)
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "users.db")}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
     # Session configuration
     app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours in seconds
     app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
@@ -64,6 +67,7 @@ def create_app():
     })
 
     db.init_app(app)
+    register_error_handlers(app)
 
     # Register blueprints
     app.register_blueprint(auth_bp)
@@ -98,7 +102,7 @@ def create_app():
 
             if not message:
                 logger.warning("Chat request received without message")
-                return jsonify({'error': 'Message is required'}), 400
+                raise ValidationError("Message is required")
 
             logger.debug(f"Creating user profile from request data: {profile_data}")
             profile = UserProfile.from_dict(profile_data)
@@ -118,12 +122,16 @@ def create_app():
             error_msg = str(exc)
             if "GEMINI_API_KEY" in error_msg:
                 logger.error("AI service not configured: GEMINI_API_KEY missing")
-                return jsonify({'error': 'AI service is not configured. Please set GEMINI_API_KEY in your environment variables.'}), 500
+                raise DatabaseError(
+                    "AI service is not configured. Please set GEMINI_API_KEY in your environment variables."
+                )
             logger.error(f"ValueError in chat API: {error_msg}")
-            return jsonify({'error': error_msg}), 500
+            raise DatabaseError(error_msg)
+        except AppError:
+            raise
         except Exception as exc:
             logger.error(f"Unexpected error in chat API: {exc}", exc_info=True)
-            return jsonify({'error': f'An error occurred: {exc}'}), 500
+            raise DatabaseError("An unexpected error occurred") from exc
 
     return app
 

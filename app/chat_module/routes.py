@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Tuple, List
 from app.chat_module.gemini_client import GeminiClient
 from app.fitness.plan_transformer import mapLLMPlanToStructuredPlan, PlanParseError
 from app.profile_module.service import HealthDataService
+from app.core.errors import AppError, ValidationError, UnauthorizedError, NotFoundError, DatabaseError
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -123,12 +124,12 @@ def health_onboarding():
     try:
         user_id = get_authenticated_user_id()
         if not user_id:
-            return jsonify({'error': 'Not authenticated'}), 401
+            raise UnauthorizedError("Not authenticated")
 
         data = request.get_json() or {}
         message = (data.get('message') or '').strip()
         if len(message) > 2000:
-            return jsonify({'error': 'Message too long'}), 400
+            raise ValidationError("Message too long")
 
         health_svc = HealthDataService()
         health_profile = health_svc.get_health_profile(user_id)
@@ -153,7 +154,7 @@ def health_onboarding():
         try:
             gemini = GeminiClient()
         except ValueError as e:
-            return jsonify({'error': 'AI service not configured', 'details': str(e)}), 500
+            raise DatabaseError("AI service not configured") from e
 
         # ---- Phase: ask_fixed (collect age, height, weight, gender) ----
         if pending_fixed:
@@ -253,10 +254,12 @@ def health_onboarding():
             'success': True,
         }), 200
 
+    except AppError:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e), 'success': False}), 500
+        raise DatabaseError("An unexpected error occurred") from e
 
 
 
@@ -296,7 +299,7 @@ def chat():
         data = request.get_json()
         is_valid, error_msg = validate_chat_request(data)
         if not is_valid:
-            return jsonify({'error': error_msg}), 400
+            raise ValidationError(error_msg)
         
         message = data.get('message', '').strip()
         conversation_history = data.get('conversation_history', [])
@@ -306,10 +309,7 @@ def chat():
         try:
             gemini_client = GeminiClient()
         except ValueError as e:
-            return jsonify({
-                'error': 'AI service is not configured properly',
-                'details': str(e)
-            }), 500
+            raise DatabaseError("AI service is not configured properly") from e
         
         # Generate AI response
         try:
@@ -326,18 +326,14 @@ def chat():
             
         except Exception as e:
             error_message = str(e)
-            return jsonify({
-                'error': 'Failed to generate AI response',
-                'details': error_message
-            }), 500
+            raise DatabaseError("Failed to generate AI response") from e
         
+    except AppError:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'error': 'An unexpected error occurred',
-            'details': str(e)
-        }), 500
+        raise DatabaseError("An unexpected error occurred") from e
 
 
 @chat_bp.route('/plan', methods=['POST'])
@@ -356,33 +352,24 @@ def generate_plan():
     try:
         user_id = get_authenticated_user_id()
         if not user_id:
-            return jsonify({'error': 'Not authenticated'}), 401
+            raise UnauthorizedError("Not authenticated")
         
         # Check if user has health profile
         health_svc = HealthDataService()
         health_profile = health_svc.get_health_profile(user_id)
         if not health_profile:
-            return jsonify({
-                'error': 'No health profile found. Complete health onboarding first.',
-                'requiresOnboarding': True
-            }), 400
+            raise ValidationError("No health profile found. Complete health onboarding first.")
         
         health_dict = health_profile.to_dict()
         if not health_dict.get('fitness_goal'):
-            return jsonify({
-                'error': 'Fitness goal not set. Complete health onboarding first.',
-                'requiresOnboarding': True
-            }), 400
+            raise ValidationError("Fitness goal not set. Complete health onboarding first.")
         
         # Read fitness plan from DynamoDB
         fp_svc = FitnessPlanService()
         plan_objects = fp_svc.get_by_user(user_id)
         
         if not plan_objects:
-            return jsonify({
-                'error': 'No fitness plan found for user. Generate a plan first.',
-                'success': False
-            }), 404
+            raise NotFoundError("No fitness plan found for user. Generate a plan first.")
         
         # Convert FitnessPlan objects to dictionaries
         plan_entries = [plan.to_dict() for plan in plan_objects]
@@ -396,22 +383,16 @@ def generate_plan():
             'message': f'Retrieved fitness plan with {len(plan_entries)} exercises.'
         }), 200
         
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({'error': str(e), 'success': False}), 401
+        raise UnauthorizedError(str(e))
     except PlanParseError as e:
-        return jsonify({
-            'error': 'Failed to format fitness plan',
-            'details': str(e),
-            'success': False
-        }), 500
+        raise DatabaseError("Failed to format fitness plan") from e
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'error': 'An unexpected error occurred',
-            'details': str(e),
-            'success': False
-        }), 500
+        raise DatabaseError("An unexpected error occurred") from e
 
 
 @chat_bp.route('/health', methods=['GET'])
@@ -426,16 +407,9 @@ def health_check():
             'model': gemini_client.model_name,
             'configured': True
         }), 200
+    except AppError:
+        raise
     except ValueError as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'service': 'chat',
-            'configured': False,
-            'error': str(e)
-        }), 503
+        raise DatabaseError(str(e))
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'service': 'chat',
-            'error': str(e)
-        }), 500
+        raise DatabaseError(str(e))

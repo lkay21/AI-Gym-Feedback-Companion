@@ -7,6 +7,7 @@ from datetime import date
 from app.chatbot.llm_service import generate_llm_response, validateFitnessPlanSchema
 from app.fitness.plan_transformer import mapLLMPlanToStructuredPlan, mapDatabasePlanToCalendar
 from app.fitness_plan_module.service import FitnessPlanService
+from app.core.errors import AppError, ValidationError, UnauthorizedError, NotFoundError, DatabaseError
 
 chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
 
@@ -95,7 +96,7 @@ def chat():
         data = request.get_json()
         is_valid, error_msg = validate_chat_request(data)
         if not is_valid:
-            return jsonify({'error': error_msg}), 400
+            raise ValidationError(error_msg)
         
         message = data.get('message', '').strip()
         conversation_history = data.get('conversation_history', [])
@@ -111,15 +112,14 @@ def chat():
         if result["success"]:
             return jsonify(result), 200
 
-        return jsonify(result), 500
+        raise DatabaseError(result.get("error") or "Failed to generate response")
         
+    except AppError:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'error': 'An unexpected error occurred',
-            'details': str(e)
-        }), 500
+        raise DatabaseError("An unexpected error occurred") from e
 
 
 @chat_bp.route('/init', methods=['POST'])
@@ -128,17 +128,14 @@ def init_plan():
     try:
         user_id = get_authenticated_user_id()
         if not user_id:
-            return jsonify({'error': 'Not authenticated'}), 401
+            raise UnauthorizedError("Not authenticated")
 
         # Retrieve the 2-week fitness plan from DynamoDB
         fp_svc = FitnessPlanService()
         plan_objects = fp_svc.get_by_user(user_id)
         
         if not plan_objects:
-            return jsonify({
-                'error': 'No fitness plan found for user. Generate a plan first.',
-                'success': False
-            }), 404
+            raise NotFoundError("No fitness plan found for user. Generate a plan first.")
         
         # Convert FitnessPlan objects to dictionaries
         plan_entries = [plan.to_dict() for plan in plan_objects]
@@ -150,10 +147,12 @@ def init_plan():
             'success': True,
             'data': structured_plan
         }), 200
+    except AppError:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'An error occurred: {str(e)}', 'success': False}), 500
+        raise DatabaseError("An unexpected error occurred") from e
 
 
 @chat_bp.route('/health', methods=['GET'])
@@ -165,26 +164,17 @@ def health_check():
         api_key = getenv("OPENAI_API_KEY")
         model_name = getenv("MODEL_NAME", "gpt-4o-mini")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY is not set in environment variables")
+            raise DatabaseError("OPENAI_API_KEY is not set in environment variables")
         return jsonify({
             'status': 'healthy',
             'service': 'chat',
             'model': model_name,
             'configured': True
         }), 200
-    except ValueError as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'service': 'chat',
-            'configured': False,
-            'error': str(e)
-        }), 503
+    except AppError:
+        raise
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'service': 'chat',
-            'error': str(e)
-        }), 500
+        raise DatabaseError("An unexpected error occurred") from e
 
 
 @chat_bp.route('/health/llm', methods=['GET'])
@@ -195,21 +185,14 @@ def llm_health_check():
         api_key = getenv("OPENAI_API_KEY")
         model_name = getenv("MODEL_NAME", "gpt-4o-mini")
         if not api_key:
-            return jsonify({
-                'status': 'unhealthy',
-                'service': 'llm',
-                'configured': False,
-                'error': 'OPENAI_API_KEY is not set'
-            }), 503
+            raise DatabaseError("OPENAI_API_KEY is not set")
         return jsonify({
             'status': 'healthy',
             'service': 'llm',
             'configured': True,
             'model': model_name
         }), 200
+    except AppError:
+        raise
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'service': 'llm',
-            'error': str(e)
-        }), 500
+        raise DatabaseError("An unexpected error occurred") from e
