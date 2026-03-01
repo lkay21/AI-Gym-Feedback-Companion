@@ -62,7 +62,7 @@ export default function LoginScreen({ navigation }) {
         Alert.alert('Success', 'Login successful!', [
           {
             text: 'OK',
-            onPress: () => navigation.replace('Chat'),
+            onPress: () => navigation.replace('Dashboard'),
           },
         ]);
       } else {
