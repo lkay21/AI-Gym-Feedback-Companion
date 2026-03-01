@@ -90,7 +90,7 @@ export default function SignupScreen({ navigation }) {
         Alert.alert('Success', 'Account created successfully!', [
           {
             text: 'OK',
-            onPress: () => navigation.replace('Chat'),
+            onPress: () => navigation.replace('Dashboard'),
           },
         ]);
       } else {
