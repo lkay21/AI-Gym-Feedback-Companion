@@ -13,6 +13,7 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.exercises.exercise import Exercise, EXERCISE_PRESETS
 from app.exercises.routes import parse_user_video
+from app.exercises.openpose import generate_pose, fetch_standard_data, score_func, FormScore, user_output
 
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -43,25 +44,6 @@ class TestS3(unittest.TestCase):
         mock_s3.upload_fileobj.assert_called_once_with(ANY, 'fitness-form-videos', 'test.mp4_raw')
         
         self.assertEqual(result, "Form looks good!")
-
-
-class TestFormScore(unittest.TestCase):
-
-    pass
-    # def test_get_standard_pose():
-    #     pass
-
-    # def test_user_output():
-    #     pass
-
-    # def test_formscore():
-    #     pass
-
-    # def test_generate_pose():
-    #     # video = "rename.mp4"
-    #     # frame_count, fps, frame_width, frame_height = gen
-    #     pass
-
 
 class TestExerciseClass(unittest.TestCase):
     def test_from_preset_builds_expected_exercise(self):
@@ -97,6 +79,157 @@ class TestExerciseClass(unittest.TestCase):
         self.assertTrue(np.array_equal(exercise.y_metrics["RWrist velocity"], np.zeros(1)))
         self.assertTrue(np.array_equal(exercise.y_metrics["RWrist acceleration"], np.zeros(1)))
 
+class TestFormScore(unittest.TestCase):
 
+    @patch('app.exercises.openpose.s3')
+    @patch('app.exercises.openpose.cv')
+    def test_generate_pose_video_properties(self, mock_cv, mock_s3):
+
+        # assert properties returned
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        mock_cap = MagicMock()
+        mock_cap.get.side_effect = [640, 480, 30.0]
+        mock_cap.read.side_effect = [
+            (True, frame),    
+            (True, frame),    
+            (False, None) 
+        ]   
+
+        mock_cv.VideoCapture.return_value = mock_cap
+        mock_cv.VideoWriter.return_value = MagicMock()
+        mock_cv.VideoWriter_fourcc.return_value = 0
+        mock_cv.minMaxLoc.return_value = (0.0, 0.9, (0, 0), (5, 5))
+
+        mock_net = MagicMock()
+        mock_net.forward.return_value = np.zeros((1, 19, 10, 10))
+        mock_cv.dnn.readNetFromTensorflow.return_value = mock_net
+
+        frame_count, fps, frame_width, frame_height = generate_pose('fake.mp4', [], {}, aws_upload=False)
+
+        self.assertEqual(frame_width, 640)
+        self.assertEqual(frame_height, 480)
+        self.assertEqual(fps, 30.0)
+        self.assertEqual(frame_count, 1)
+
+    @patch('app.exercises.openpose.s3')
+    @patch('app.exercises.openpose.cv')
+    def test_generate_pose_aws_flag_true(self, mock_cv, mock_s3):
+
+        # assert s3.upload_file is called when aws_upload=True
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        mock_cap = MagicMock()
+        mock_cap.get.side_effect = [640, 480, 30.0]
+        mock_cap.read.side_effect = [
+            (True, frame),    
+            (True, frame),    
+            (False, None) 
+        ]   
+
+        mock_cv.VideoCapture.return_value = mock_cap
+        mock_cv.VideoWriter.return_value = MagicMock()
+        mock_cv.VideoWriter_fourcc.return_value = 0
+        mock_cv.minMaxLoc.return_value = (0.0, 0.9, (0, 0), (5, 5))
+
+        mock_net = MagicMock()
+        mock_net.forward.return_value = np.zeros((1, 19, 10, 10))
+        mock_cv.dnn.readNetFromTensorflow.return_value = mock_net
+
+        frame_count, fps, frame_width, frame_height = generate_pose('test.mp4', [], {}, aws_upload=True)
+
+        mock_s3.upload_file.assert_called_once()
+
+    @patch('app.exercises.openpose.s3')
+    @patch('app.exercises.openpose.cv')
+    def test_generate_pose_aws_flag_false(self, mock_cv, mock_s3):
+
+        # assert s3.upload_file is NOT called when aws_upload=True
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        mock_cap = MagicMock()
+        mock_cap.get.side_effect = [640, 480, 30.0]
+        mock_cap.read.side_effect = [
+            (True, frame),    
+            (True, frame),    
+            (False, None) 
+        ]   
+
+        mock_cv.VideoCapture.return_value = mock_cap
+        mock_cv.VideoWriter.return_value = MagicMock()
+        mock_cv.VideoWriter_fourcc.return_value = 0
+        mock_cv.minMaxLoc.return_value = (0.0, 0.9, (0, 0), (5, 5))
+
+        mock_net = MagicMock()
+        mock_net.forward.return_value = np.zeros((1, 19, 10, 10))
+        mock_cv.dnn.readNetFromTensorflow.return_value = mock_net
+
+        frame_count, fps, frame_width, frame_height = generate_pose('test.mp4', [], {}, aws_upload=False)
+
+        mock_s3.upload_file.assert_not_called()
+
+    def test_fetch_standard_data_return_type(self):
+        
+        exercise = Exercise.from_preset("bicep_curl")
+        x_out, y_out = {}, {}
+
+        for joint in exercise.joint_group:
+            x_out[joint] = fetch_standard_data(joint, 'x', exercise.name)
+            y_out[joint] = fetch_standard_data(joint, 'y', exercise.name)
+
+            self.assertIsInstance(x_out[joint], list)
+            self.assertIsInstance(y_out[joint], list)
+
+    def test_fetch_standard_exercise_dne(self):
+        with self.assertRaises(FileNotFoundError):
+            fetch_standard_data('RShoulder', 'y', 'easy_exercise')
+
+    def test_score_func_high(self):
+        self.assertAlmostEqual(score_func(0.9), 0.9 ** 2)
+
+    def test_score_func_med(self):
+        self.assertAlmostEqual(score_func(0.75), 0.75 ** 3)
+
+    def test_score_func_lo(self):
+        self.assertAlmostEqual(score_func(0.55), 0.55 ** 4)
+
+    @patch('app.exercises.openpose.generate_pose')
+    @patch('app.exercises.openpose.fetch_standard_data')
+    def test_formscore_returns_expected_keys(self, mock_fetch, mock_generate):
+        
+        def fake_generate_pose(path, joint_group_nums, frame_vals, aws_upload):
+            for key in frame_vals.keys():
+                frame_vals[key] = {0: (100, 200), 1: (110, 210), 2: (120, 220)}
+            return (3, 30.0, 640, 480)
+        
+        mock_generate.side_effect = fake_generate_pose
+        mock_fetch.return_value = [0.1, 0.2, 0.3, 0.4, 0.5]
+
+        overall_score, joint_scores, context_dict, user_data, standard_data = FormScore('test.mp4', 'bicep_curl')
+
+
+        self.assertIsInstance(overall_score, float)
+        self.assertIsInstance(joint_scores, dict)
+        self.assertGreaterEqual(overall_score, 0.0)
+        self.assertLessEqual(overall_score, 1.0)
+        self.assertIsInstance(context_dict, dict)
+        self.assertIsInstance(user_data, dict)
+        self.assertIsInstance(standard_data, dict)
+
+    @patch('app.exercises.openpose.genai')
+    @patch('app.exercises.openpose.FormScore')
+    def test_user_output_return(self, mock_formscore, mock_genai):
+
+        mock_formscore.return_value = (0.85, {"RWrist": 0.9}, {}, {}, {})
+        mock_genai.return_value = "Not bad form! Keep going!"
+        mock_genai.Client.return_value.models.generate_content.return_value.text = "some feedback text"
+
+
+        feedback = user_output('test.mp4', 'bicep_curl')
+
+        self.assertIsInstance(feedback, str)
+        self.assertIn("Not bad form!", feedback)
+
+    
 if __name__ == "__main__":
     unittest.main()
