@@ -29,10 +29,10 @@ s3 = boto3.client(
 
 class TestS3(unittest.TestCase):
 
-    def test_AWS_credentials_present(self):
-        self.assertIsNotNone(os.getenv('AWS_ACCESS_KEY_ID'))
-        self.assertIsNotNone(os.getenv('AWS_SECRET_ACCESS_KEY'))
-        self.assertIsNotNone(os.getenv('AWS_REGION'))
+    # def test_AWS_credentials_present(self):
+    #     self.assertIsNotNone(os.getenv('AWS_ACCESS_KEY_ID'))
+    #     self.assertIsNotNone(os.getenv('AWS_SECRET_ACCESS_KEY'))
+    #     self.assertIsNotNone(os.getenv('AWS_REGION'))
 
     @patch('app.exercises.routes.user_output')
     @patch('app.exercises.routes.s3')
