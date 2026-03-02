@@ -2,7 +2,7 @@
 Integration tests for app/main.py data flow.
 
 Validates:
-- Benchmarks loader integration on app creation
+- App creation and core route registration
 - UserProfile creation from request data
 - AI call wiring with correct arguments
 """
@@ -14,20 +14,19 @@ from app.database.models import UserProfile
 
 
 @pytest.fixture
-def app(monkeypatch):
-    """Create a Flask app with benchmark loader mocked."""
-    benchmarks = {"strength": {"example": 1}}
-
-    monkeypatch.setattr(main_module, "load_fitness_benchmarks", lambda: benchmarks)
+def app():
+    """Create a Flask app for integration testing."""
     app = main_module.create_app()
     app.testing = True
     return app
 
 
-def test_create_app_loads_benchmarks(app):
-    """Ensure benchmarks are loaded and stored on the app."""
-    assert isinstance(app.benchmarks, dict)
-    assert app.benchmarks.get("strength") == {"example": 1}
+def test_create_app_registers_core_routes(app):
+    """Ensure app initializes and core routes are available."""
+    routes = {rule.rule for rule in app.url_map.iter_rules()}
+    assert "/" in routes
+    assert "/chat" in routes
+    assert "/api/scaffolding/chat" in routes
 
 
 def test_chat_api_data_flow(monkeypatch, app):

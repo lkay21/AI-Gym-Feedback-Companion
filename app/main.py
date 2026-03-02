@@ -8,6 +8,7 @@ from app.auth_module.routes import auth_bp
 from app.profile_module.routes import profile_bp
 from app.auth_module.models import User  # Import User model so tables are created
 from app.chat_module.routes import chat_bp as chat_module_bp
+from app.fitness_plan_module.routes import fitness_plan_bp
 from app.chatbot.ai_recommendations import get_ai_recommendation
 from app.logger import get_logger
 from app.database.models import UserProfile
@@ -70,6 +71,8 @@ def create_app():
     app.register_blueprint(chat_module_bp, url_prefix='/api/chat')
     # Register profile blueprint
     app.register_blueprint(profile_bp)
+    # Register fitness plan CRUD blueprint
+    app.register_blueprint(fitness_plan_bp)
 
     # Frontend routes
     @app.route('/')
