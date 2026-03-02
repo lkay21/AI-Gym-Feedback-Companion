@@ -10,7 +10,20 @@ from app.exercises.exercise import Exercise, EXERCISE_PRESETS
 
 
 class TestFormScore(unittest.TestCase):
-    pass
+
+    def test_get_standard_pose():
+        pass
+
+    def test_user_output():
+        pass
+
+    def test_formscore():
+        pass
+
+    def test_generate_pose():
+        # video = "rename.mp4"
+        # frame_count, fps, frame_width, frame_height = gen
+        pass
 
 
 class TestExerciseClass(unittest.TestCase):
