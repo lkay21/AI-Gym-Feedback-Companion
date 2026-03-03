@@ -16,6 +16,13 @@ export default function RecordVideoScreen({ navigation }) {
           <Text style={styles.topLabel}>CV Processing Screen</Text>
         </View>
 
+        <View style={styles.backRow}>
+          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.92)" />
+             <Text style={styles.backText}>Back</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.title}>Record a Video</Text>
