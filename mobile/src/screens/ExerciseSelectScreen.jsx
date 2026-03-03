@@ -29,6 +29,12 @@ export default function ExerciseSelectScreen({ navigation }) {
     []
   );
 
+    const onSelectExercise = (exercise) => {
+    navigation.navigate("RecordVideo", { 
+      selectedExercise: exercise.title
+    });
+  };
+
   return (
     <LinearGradient
       colors={["#4C76D6", "#8E5AAE"]}
@@ -54,7 +60,7 @@ export default function ExerciseSelectScreen({ navigation }) {
             contentContainerStyle={styles.listContent}
             ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
             renderItem={({ item }) => (
-              <Pressable style={styles.row} onPress={() => {}}>
+              <Pressable style={styles.row} onPress={() => onSelectExercise(item)}>
                 <Image source={{ uri: item.image }} style={styles.thumb} />
                 <View style={styles.textCol}>
                   <Text style={styles.exerciseTitle}>{item.title}</Text>

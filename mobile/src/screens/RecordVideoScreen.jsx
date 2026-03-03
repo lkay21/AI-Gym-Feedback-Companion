@@ -1,8 +1,35 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { cvAPI } from "../services/api";
 
-export default function RecordVideoScreen({ navigation }) {
+export default function RecordVideoScreen({ navigation, route }) {
+  const selectedExercise = route?.params?.selectedExercise ?? null;
+
+  const onUpload = async () => {
+    const result = await cvAPI.analyzeVideo({
+      uri: recordedVideoUri,
+      exercise: selectedExercise,
+      userId,
+    });
+
+    if (result.success) {
+      navigation.navigate("Dashboard", {
+        cvResult: {
+          score: result.data.form_score,
+          feedback: result.data.feedback,
+        },
+      });
+    }
+  };
+
+  const handleUpload = () => {
+    if (!selectedExercise) {
+      navigation.navigate("ExerciseSelect");
+      return;
+    }
+    onUpload();
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -57,7 +84,7 @@ export default function RecordVideoScreen({ navigation }) {
 
             <Pressable
               style={styles.pillBtn}
-              onPress={() => navigation.navigate("ExerciseSelect")}
+              onPress={handleUpload}
             >
               <Text style={styles.pillBtnText}>Upload Video</Text>
             </Pressable>

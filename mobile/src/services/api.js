@@ -108,3 +108,24 @@ export const chatAPI = {
 };
 
 export default { request: apiRequest };
+
+export const cvAPI = {
+  analyzeVideo: async ({ uri, exercise, userId }) => {
+    const formData = new FormData();
+    formData.append("exercise", exercise);
+    formData.append("user_id", String(userId));
+    formData.append("video", {
+      uri,
+      name: "upload.mp4",
+      type: "video/mp4",
+    });
+
+    const res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
+      method: "POST",
+      body: formData,
+      // do NOT set Content-Type manually for multipart in RN
+    });
+    const data = await res.json();
+    return res.ok ? { success: true, data } : { success: false, error: data.error };
+  },
+};
