@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from .supabase_client import get_supabase_client
+from app.profile_module.service import ProfileService
+from app.profile_module.models import UserProfile
 import re
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -88,6 +90,13 @@ def register():
                 session['email'] = response.user.email
                 session['username'] = username
                 session.permanent = True
+
+                # Ensure a corresponding DynamoDB user profile exists
+                try:
+                    ProfileService().update_profile(response.user.id, {})
+                except Exception as e:
+                    # Do not block registration on profile creation failures
+                    print(f"Warning: failed to create DynamoDB user profile for {response.user.id}: {e}")
 
                 return jsonify({
                     'message': 'User registered successfully',
@@ -187,6 +196,13 @@ def login():
             session['email'] = response.user.email
             session['username'] = username
             session.permanent = True
+
+            # Ensure a corresponding DynamoDB user profile exists
+            try:
+                ProfileService().update_profile(response.user.id, {})
+            except Exception as e:
+                # Do not block login on profile creation failures
+                print(f"Warning: failed to create DynamoDB user profile for {response.user.id}: {e}")
 
             return jsonify({
                 'message': 'Login successful',
