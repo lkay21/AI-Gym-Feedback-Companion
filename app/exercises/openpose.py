@@ -103,7 +103,7 @@ def mov_to_mp4(video_path, output):
 def generate_pose(file_path, joint_group, frame_vals, aws_upload):
 
     #TODO: write video post processing file checking/converting and ensure correct format/params, if not return error
-    file_path = video_robustness_check(file_path)
+    # file_path = video_robustness_check(file_path)
 
     # load the pre-trained model
     net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
