@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
+    "jest-expo": "^55.0.9",
+    "react-test-renderer": "^19.2.4"
+  }
+}

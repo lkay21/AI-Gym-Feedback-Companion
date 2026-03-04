@@ -4,8 +4,8 @@ from flask import Blueprint, request, jsonify, session
 import boto3
 from dotenv import load_dotenv
 import os
-from .openpose import generate_pose, FormScore, fetch_standard_data, get_standard_pose, user_output
-from .exercise import Exercise, EXERCISE_PRESETS
+from openpose import generate_pose, FormScore, fetch_standard_data, get_standard_pose, user_output
+from exercise import Exercise, EXERCISE_PRESETS
 
 load_dotenv()
 

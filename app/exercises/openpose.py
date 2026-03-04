@@ -4,7 +4,7 @@ import cv2 as cv
 import os
 from dotenv import load_dotenv
 import numpy as np
-from . import exercise as ex
+import exercise as ex
 import time
 import mediapipe as mp
 from sklearn.metrics import root_mean_squared_error
@@ -12,6 +12,8 @@ from scipy.interpolate import interp1d
 import subprocess
 from google import genai
 import os
+from pymediainfo import MediaInfo
+import moviepy.editor as mp
 
 load_dotenv()
     
@@ -55,7 +57,53 @@ APP_DATA_DIR = os.path.join(APP_DIR, "exercise_data")
 # proto_file = "./app/models/pose_deploy.prototxt"
 # weights_file = "./app/models/pose_iter_440000.caffemodel"
 
+def video_robustness_check(video_path):
+
+    #TODO: check if video is in correct format, if not convert to mp4
+    media_info = MediaInfo.parse(video_path)
+
+    if media_info.general_tracks:
+        format = media_info.general_tracks[0].format
+
+        if not("MPEG-4" in format or "MP4" in format):
+            output_path = video_path.rsplit(".", 1)[0] + ".mp4"
+            video_path = mov_to_mp4(video_path, output_path)
+            media_info = MediaInfo.parse(video_path)
+        else:
+            print(f"Video format is acceptable: {format}")
+
+        #TODO: check if video params are acceptable
+        # for track in media_info.video_tracks:
+        #     if track.track_type == 'Video':
+        #         # check video stats
+        #         pass
+
+    #check if video can be opened and read by opencv, if not return error
+    cap = cv.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError("Error: Could not open video file.")
+
+
+    return video_path
+
+def mov_to_mp4(video_path, output):
+
+    try: 
+        clip = mp.VideoFileClip(video_path)
+        clip.write_videofile(output, codec='libx264')
+        clip.close()
+
+    except Exception as e:
+        print(f"Error converting video: {e}")
+        raise ValueError("Error converting video to mp4 format.")
+    
+    return output
+    
+
 def generate_pose(file_path, joint_group, frame_vals, aws_upload):
+
+    #TODO: write video post processing file checking/converting and ensure correct format/params, if not return error
+    file_path = video_robustness_check(file_path)
 
     # load the pre-trained model
     net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
@@ -347,10 +395,16 @@ def user_output(user_path, exercise, aws_upload=False):
                  
     client = genai.Client(api_key=GEMINI_API_KEY)
 
-    response = client.models.generate_content(
-        model = "gemini-3-flash-preview",
-        contents=llm_prompt,
-    )
+    try:
+        response = client.models.generate_content(
+            model = "gemini-3-flash-preview",
+            contents=llm_prompt,
+        )
+    
+    except Exception as err:
+        if err.response and err.response.status_code == 503:
+            print("AI service not configured: GEMINI_API_KEY missing or invalid")
+            raise ValueError("AI service is not configured. Please set GEMINI_API_KEY in your environment variables.")
 
 
     if overall_score >= 0.9:
@@ -427,9 +481,6 @@ def get_standard_pose(example_path, exercise, aws_upload=False):
         with open(file_output_path, 'w') as f:
              f.write(f"Joint: {joint}\n")
              f.write(f"{frame_vals[joint]}\n")
-    
-# def mov_to_mp4(input_path, output_path):
-#     pass
 
 if __name__ == "__main__":
 
