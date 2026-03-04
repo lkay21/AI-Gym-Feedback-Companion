@@ -4,7 +4,11 @@ import cv2 as cv
 import os
 from dotenv import load_dotenv
 import numpy as np
-import exercise as ex
+
+#CHANGE THIS FOR DEMO
+from . import exercise as ex
+
+
 import time
 import mediapipe as mp
 from sklearn.metrics import root_mean_squared_error
