@@ -13,7 +13,7 @@ import subprocess
 from google import genai
 import os
 from pymediainfo import MediaInfo
-import moviepy.editor as mp
+# import moviepy.editor as mp
 
 load_dotenv()
     
