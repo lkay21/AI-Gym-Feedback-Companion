@@ -9,19 +9,19 @@ export default function ExerciseSelectScreen({ navigation }) {
     () => [
       {
         id: "e1",
-        title: "Exercise 1",
+        title: "Bicep Curl",
         duration: "02.30 Minutes",
         image: "https://images.unsplash.com/photo-1599058918144-1ffabb6ab9a0?auto=format&fit=crop&w=200&q=80",
       },
       {
         id: "e2",
-        title: "Exercise 2",
+        title: "Lateral Raise",
         duration: "02.00 Minutes",
         image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
       },
       {
         id: "e3",
-        title: "Exercise 3",
+        title: "Hammer Curl",
         duration: "03.20 Minutes",
         image: "https://images.unsplash.com/photo-1517963628607-235ccdd5476c?auto=format&fit=crop&w=200&q=80",
       },

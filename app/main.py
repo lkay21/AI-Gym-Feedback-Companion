@@ -128,6 +128,8 @@ def create_app():
             logger.error(f"Unexpected error in chat API: {exc}", exc_info=True)
             return jsonify({'error': f'An error occurred: {exc}'}), 500
 
+    return app
+
 
 def main():
     app = create_app()
