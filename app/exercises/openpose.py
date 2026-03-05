@@ -4,7 +4,7 @@ import cv2 as cv
 import os
 from dotenv import load_dotenv
 import numpy as np
-import exercise as ex
+from . import exercise as ex
 import time
 import mediapipe as mp
 from sklearn.metrics import root_mean_squared_error
@@ -187,18 +187,24 @@ def fetch_standard_data(joint, axis, exercise_name):
     file_name = f"{exercise_name}_{joint}".replace(" ", "_").lower()
     vid_file_name = f"{exercise_name}_video_params".replace(" ", "_").lower()
 
-    with open(os.path.join(output_path, file_name + ".txt"), 'r') as f:
-        lines = f.readlines()
-        raw_data = eval(lines[1])
-        f.close()
 
-    with open(os.path.join(output_path, vid_file_name + ".txt"), 'r') as f:
-        lines = f.readlines()
-        fps = float(lines[1].split(": ")[1])    
-        frame_width = int(lines[2].split(": ")[1])
-        frame_height = int(lines[3].split(": ")[1])
-        f.close()
+    try: 
+        with open(os.path.join(output_path, file_name + ".txt"), 'r') as f:
+            lines = f.readlines()
+            raw_data = eval(lines[1])
+            f.close()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"No standard data found for exercise '{exercise_name}', joint '{joint}'")
 
+    try: 
+        with open(os.path.join(output_path, vid_file_name + ".txt"), 'r') as f:
+            lines = f.readlines()
+            fps = float(lines[1].split(": ")[1])    
+            frame_width = int(lines[2].split(": ")[1])
+            frame_height = int(lines[3].split(": ")[1])
+            f.close()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"No video params found for exercise '{exercise_name}'")
     
     ax = 0 if axis.lower() == "x" else 1
     div = frame_width if axis.lower() == "x" else frame_height
