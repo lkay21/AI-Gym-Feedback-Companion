@@ -8,6 +8,7 @@ from app.auth_module.routes import auth_bp
 from app.profile_module.routes import profile_bp
 from app.auth_module.models import User  # Import User model so tables are created
 from app.chat_module.routes import chat_bp as chat_module_bp
+from app.exercises.routes import exercises_bp
 from app.fitness.benchmark_loader import load_fitness_benchmarks
 from app.chatbot.ai_recommendations import get_ai_recommendation
 from app.logger import get_logger
@@ -69,6 +70,8 @@ def create_app():
     app.register_blueprint(auth_bp)
     # Chat module routes: health-onboarding, chat endpoints, plan generation
     app.register_blueprint(chat_module_bp, url_prefix='/api/chat')
+    # CV form analysis routes
+    app.register_blueprint(exercises_bp, url_prefix='/api/exercises')
     # Register profile blueprint
     app.register_blueprint(profile_bp)
 

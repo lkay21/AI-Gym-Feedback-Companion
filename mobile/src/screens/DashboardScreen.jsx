@@ -1,7 +1,6 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -24,7 +23,7 @@ const WEEKLY_PLAN = [
   { day: "Friday", text: "Abs, Cardio" },
 ];
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen({ navigation, route }) {
   const [prompt, setPrompt] = useState("");
 
   const onSend = () => {
@@ -44,6 +43,17 @@ export default function DashboardScreen({ navigation }) {
     ],
     []
   );
+
+  const [formScore, setFormScore] = useState(null);
+  const [formFeedback, setFormFeedback] = useState("");
+
+  useEffect(() => {
+    const cv = route?.params?.cvResult;
+    if (cv) {
+      setFormScore(cv.score ?? null);
+      setFormFeedback(cv.feedback ?? "");
+    }
+  }, [route?.params?.cvResult]);
 
   return (
     <LinearGradient
@@ -134,12 +144,12 @@ export default function DashboardScreen({ navigation }) {
 
                 <View style={{ height: 10 }} />
 
+                {/* Form Score and Feedback */}
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Form Score:</Text> 7.8
+                  <Text style={styles.metaLabel}>Form Score:</Text> {formScore}
                 </Text>
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Feedback:</Text> Keep your back
-                  straight and your arm{"\n"}at a 90 degree angle!
+                  <Text style={styles.metaLabel}>Feedback:</Text> {formFeedback}
                 </Text>
               </View>
 
