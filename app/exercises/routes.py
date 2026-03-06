@@ -56,7 +56,7 @@ def parse_user_video():
     uploaded_video.save(save_path)
 
     try:
-        feedback = user_output(stored_filename, exercise, aws_upload=False)
+        form_score, feedback = user_output(stored_filename, exercise, aws_upload=False)
     except Exception as exc:
         return jsonify({"success": False, "error": f"Video processing failed: {exc}"}), 500
 
@@ -65,6 +65,7 @@ def parse_user_video():
             "success": True,
             "exercise": exercise,
             "user_id": user_id or None,
+            "formScore": round(float(form_score), 2),
             "video_file": stored_filename,
             "user_output": feedback,
         }

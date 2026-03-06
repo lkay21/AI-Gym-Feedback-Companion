@@ -55,6 +55,10 @@ export default function DashboardScreen({ navigation, route }) {
     }
   }, [route?.params?.cvResult]);
 
+  const cleanedFeedback = (formFeedback || "")
+    .replace(/^\s*feedback\s*:\s*/i, "")
+    .trim();
+
   return (
     <LinearGradient
       colors={["#4C76D6", "#8E5AAE"]}
@@ -146,10 +150,10 @@ export default function DashboardScreen({ navigation, route }) {
 
                 {/* Form Score and Feedback */}
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Form Score:</Text> {formScore}
+                  <Text style={styles.metaLabel}>Form Score:</Text> {formScore ?? "N/A"}
                 </Text>
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Feedback:</Text> {formFeedback}
+                  <Text style={styles.metaLabel}>Feedback:</Text> {cleanedFeedback || "No feedback yet. Upload a video first."}
                 </Text>
               </View>
 

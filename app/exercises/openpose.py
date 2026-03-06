@@ -328,23 +328,23 @@ def user_output(user_path, exercise, aws_upload=False):
     overall_score, joint_scores, context_dict, user_data, standard_data = FormScore(user_path, exercise, aws_upload)
     out_string = f"\nFeedback:\n"
 
-    llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
-                 f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
-                 f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
-                 f"Please provide generic feedback for the given exercise that matches the one perfomed by the user and the data provdied to you as context."\
-                 f"Here is your context, "\
-                 f"Overall Score: {overall_score}\n"\
-                 f"Joint Scores: {joint_scores}\n"\
-                 f"Insights: {context_dict}\n"\
-                 f"User Joint Data: {user_data}\n"\
-                 f"Standard Joint Data: {standard_data}\n"\
+    # llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
+    #              f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
+    #              f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
+    #              f"Please provide generic feedback for the given exercise that matches the one perfomed by the user and the data provdied to you as context."\
+    #              f"Here is your context, "\
+    #              f"Overall Score: {overall_score}\n"\
+    #              f"Joint Scores: {joint_scores}\n"\
+    #              f"Insights: {context_dict}\n"\
+    #              f"User Joint Data: {user_data}\n"\
+    #              f"Standard Joint Data: {standard_data}\n"\
                  
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    # client = genai.Client(api_key=GEMINI_API_KEY)
 
-    response = client.models.generate_content(
-        model = "gemini-3-flash-preview",
-        contents=llm_prompt,
-    )
+    # response = client.models.generate_content(
+    #     model = "gemini-3-flash-preview",
+    #     contents=llm_prompt,
+    # )
 
 
     if overall_score >= 0.9:
@@ -355,9 +355,9 @@ def user_output(user_path, exercise, aws_upload=False):
         out_string += "     Your form needs work. Focus on improving your technique for better results and injury prevention."
 
 
-    out_string += response.text
+    # out_string += response.text
 
-    return out_string
+    return overall_score * 100, out_string
 
 # takes in example video for input exercise to get "standard" data for each joing in define joint group for that exercise
 # data gets saved to ./exercise_data 

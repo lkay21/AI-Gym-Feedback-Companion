@@ -96,15 +96,23 @@ export default function RecordVideoScreen({ navigation, route }) {
         return;
       }
 
-      navigation.navigate("Dashboard", {
-        cvResult: {
-          score: result.data?.form_score ?? result.data?.score ?? null,
-          feedback:
-            result.data?.user_output ??
-            result.data?.feedback ??
-            result.data?.result ??
-            "Analysis complete.",
+      navigation.navigate({
+        name: "Dashboard",
+        params: {
+          cvResult: {
+            score:
+              result.data?.formScore ??
+              result.data?.form_score ??
+              result.data?.score ??
+              null,
+            feedback:
+              result.data?.user_output ??
+              result.data?.feedback ??
+              result.data?.result ??
+              "Analysis complete.",
+          },
         },
+        merge: true,
       });
     } finally {
       setIsUploading(false);
