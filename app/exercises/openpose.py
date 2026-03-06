@@ -12,6 +12,8 @@ from scipy.interpolate import interp1d
 import subprocess
 from google import genai
 import os
+from pymediainfo import MediaInfo
+import moviepy.editor as mp
 
 load_dotenv()
     
@@ -55,7 +57,51 @@ APP_DATA_DIR = os.path.join(APP_DIR, "exercise_data")
 # proto_file = "./app/models/pose_deploy.prototxt"
 # weights_file = "./app/models/pose_iter_440000.caffemodel"
 
+def mov_to_mp4(video_path, output):
+
+    try: 
+        clip = mp.VideoFileClip(video_path)
+        clip.write_videofile(output, codec='libx264')
+        clip.close()
+
+    except Exception as e:
+        print(f"Error converting video: {e}")
+        raise ValueError("Error converting video to mp4 format.")
+    
+    return output
+
+def video_robustness_check(video_path):
+
+    #TODO: check if video is in correct format, if not convert to mp4
+    media_info = MediaInfo.parse(video_path)
+
+    if media_info.general_tracks:
+        format = media_info.general_tracks[0].format
+
+        if not("MPEG-4" in format or "MP4" in format):
+            output_path = video_path.rsplit(".", 1)[0] + ".mp4"
+            video_path = mov_to_mp4(video_path, output_path)
+            media_info = MediaInfo.parse(video_path)
+        else:
+            print(f"Video format is acceptable: {format}")
+
+        #TODO: check if video params are acceptable
+        # for track in media_info.video_tracks:
+        #     if track.track_type == 'Video':
+        #         # check video stats
+        #         pass
+
+    #check if video can be opened and read by opencv, if not return error
+    cap = cv.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError("Error: Could not open video file.")
+
+
+    return video_path
+
 def generate_pose(file_path, joint_group, frame_vals, aws_upload):
+
+    file_path = video_robustness_check(file_path)
 
     # load the pre-trained model
     net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))

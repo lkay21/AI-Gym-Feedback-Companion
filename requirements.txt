@@ -17,3 +17,5 @@ scikit-learn
 supabase>=2.27.2
 
 boto3>=1.34.0
+pymediainfo>=6.0.0
+moviepy>=1.0.3
