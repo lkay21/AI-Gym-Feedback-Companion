@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -14,58 +15,96 @@ import {
   View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
+import WorkoutSnapshot from "../components/WorkoutSnapshot";
+import { chatAPI } from "../services/api";
 import MenuDropdown from "../components/MenuDropdown";
 
-const DAY_PILLS = [
-  { k: "sat", label: "Sat", num: "7" },
-  { k: "sun", label: "Sun", num: "8" },
-  { k: "mon", label: "Mon", num: "9" },
-  { k: "tue", label: "Tue", num: "10" },
-  { k: "wed", label: "Wed", num: "11" },
-];
-
-const EXERCISES = [
-  {
-    id: "e1",
-    title: "Exercise 1",
-    duration: "02.30 Minutes",
-    image:
-      "https://images.unsplash.com/photo-1599058918144-1ffabb6ab9a0?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "e2",
-    title: "Exercise 2",
-    duration: "02.00 Minutes",
-    image:
-      "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "e3",
-    title: "Exercise 3",
-    duration: "03.20 Minutes",
-    image:
-      "https://images.unsplash.com/photo-1517963628607-235ccdd5476c?auto=format&fit=crop&w=200&q=80",
-  },
-];
-
 export default function SnapshotScreen({ navigation }) {
-  const [selectedPill, setSelectedPill] = useState("mon");
-  const [selectedDate, setSelectedDate] = useState("2025-12-09");
+  const [plan, setPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
   const [prompt, setPrompt] = useState("");
 
-  const markedDates = useMemo(
-    () => ({
-      [selectedDate]: {
+  const fetchPlan = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await chatAPI.generatePlan();
+
+      if (!result.success) {
+        if (result.data?.requiresOnboarding) {
+          throw new Error("Please complete your health profile first in the chat.");
+        }
+        throw new Error(result.error || "Failed to fetch plan");
+      }
+
+      const structuredPlan = result.data?.structuredPlan;
+      if (!structuredPlan) {
+        throw new Error("No structured plan returned");
+      }
+
+      setPlan(structuredPlan);
+    } catch (err) {
+      setError(err.message || "Failed to load plan");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPlan();
+  }, [fetchPlan]);
+
+  const workoutsByDate = useMemo(() => {
+    if (!plan || !plan.weeks) return {};
+    const map = {};
+    plan.weeks.forEach((week) => {
+      if (week.days) {
+        week.days.forEach((day) => {
+          if (day.date) {
+            map[day.date] = day;
+          }
+        });
+      }
+    });
+    return map;
+  }, [plan]);
+
+  const selectedWorkout = workoutsByDate[selectedDate] || null;
+  const muscleGroups = selectedWorkout?.targetMuscleGroups || [];
+  const estimatedDuration = selectedWorkout?.estimatedDurationMinutes || 0;
+  const totalCalories = selectedWorkout?.totalExpectedCaloriesBurnt || 0;
+
+  const markedDates = useMemo(() => {
+    const marks = {};
+    Object.keys(workoutsByDate).forEach((date) => {
+      const workout = workoutsByDate[date];
+      const isRest = workout.workoutType?.toLowerCase().includes('rest') || !workout.exercises?.length;
+      marks[date] = {
+        marked: true,
+        dotColor: isRest ? "#94a3b8" : "#F5A623",
+      };
+    });
+    if (selectedDate && marks[selectedDate]) {
+      marks[selectedDate] = {
+        ...marks[selectedDate],
         selected: true,
         selectedColor: "rgba(36, 12, 75, 0.85)",
         selectedTextColor: "#fff",
-      },
-      "2025-12-07": { marked: true, dotColor: "#F5A623" },
-      "2025-12-09": { marked: true, dotColor: "#F5A623" },
-      "2025-12-14": { marked: true, dotColor: "#F5A623" },
-    }),
-    [selectedDate]
-  );
+      };
+    } else if (selectedDate) {
+      marks[selectedDate] = {
+        selected: true,
+        selectedColor: "rgba(36, 12, 75, 0.85)",
+        selectedTextColor: "#fff",
+      };
+    }
+    return marks;
+  }, [workoutsByDate, selectedDate]);
 
   const onSend = () => {
     const t = prompt.trim();
@@ -99,31 +138,24 @@ export default function SnapshotScreen({ navigation }) {
             >
               <Text style={styles.title}>Workout Snapshot</Text>
 
-              {/* Day pills */}
-              <View style={styles.pillsRow}>
-                {DAY_PILLS.map((p) => {
-                  const active = p.k === selectedPill;
-                  return (
-                    <Pressable
-                      key={p.k}
-                      onPress={() => setSelectedPill(p.k)}
-                      style={[styles.pill, active && styles.pillActive]}
-                    >
-                      <Text style={[styles.pillDay, active && styles.pillDayActive]}>
-                        {p.label}
-                      </Text>
-                      <Text style={[styles.pillNum, active && styles.pillNumActive]}>
-                        {p.num}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#facc15" />
+                  <Text style={styles.loadingText}>Loading your workout plan...</Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{error}</Text>
+                  <Pressable style={styles.retryBtn} onPress={fetchPlan}>
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                  </Pressable>
+                </View>
+              ) : (
+              <>
               {/* Calendar */}
               <View style={styles.calendarWrap}>
                 <Calendar
-                  current={"2025-12-01"}
+                  current={selectedDate}
                   markedDates={markedDates}
                   onDayPress={(day) => setSelectedDate(day.dateString)}
                   theme={{
@@ -142,52 +174,51 @@ export default function SnapshotScreen({ navigation }) {
               </View>
 
               {/* Targeted muscle groups */}
-              <Text style={styles.sectionTitle}>Targeted Muscle Groups</Text>
-              <View style={styles.muscleFrame}>
-                <Image
-                  source={{
-                    uri:
-                      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Muscle_anterior_labeled.png/640px-Muscle_anterior_labeled.png",
-                  }}
-                  style={styles.muscleImg}
-                  resizeMode="contain"
-                />
-              </View>
+              {muscleGroups.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>Targeted Muscle Groups</Text>
+                  <View style={styles.muscleTagsWrap}>
+                    {muscleGroups.map((muscle, idx) => (
+                      <View key={idx} style={styles.muscleTag}>
+                        <Text style={styles.muscleTagText}>{muscle}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
 
               {/* Session card */}
               <View style={styles.sessionCard}>
-                <Text style={styles.sessionTitle}>Starting Today’s Session</Text>
+                <Text style={styles.sessionTitle}>
+                  {selectedWorkout?.workoutType || "Workout"}
+                </Text>
                 <Text style={styles.sessionSub}>
-                  Make sure to warm up and stretch your muscles{"\n"}
-                  before proceeding with today’s session.
+                  {selectedWorkout?.exercises?.length > 0
+                    ? "Make sure to warm up and stretch your muscles\nbefore proceeding with today's session."
+                    : "Rest and recovery day"}
                 </Text>
 
-                <View style={styles.chipRow}>
-                  <View style={styles.chip}>
-                    <Ionicons name="time-outline" size={14} color="#2E2E2E" />
-                    <Text style={styles.chipText}>10.00 mins</Text>
+                {estimatedDuration > 0 && (
+                  <View style={styles.chipRow}>
+                    <View style={styles.chip}>
+                      <Ionicons name="time-outline" size={14} color="#2E2E2E" />
+                      <Text style={styles.chipText}>{estimatedDuration} mins</Text>
+                    </View>
+                    {totalCalories > 0 && (
+                      <View style={styles.chip}>
+                        <Ionicons name="flame-outline" size={14} color="#2E2E2E" />
+                        <Text style={styles.chipText}>{totalCalories} cal</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.chip}>
-                    <Ionicons name="walk-outline" size={14} color="#2E2E2E" />
-                    <Text style={styles.chipText}>Running</Text>
-                  </View>
-                </View>
+                )}
 
                 <Text style={styles.exerciseHeader}>Exercises</Text>
 
-                {EXERCISES.map((e) => (
-                  <View key={e.id} style={styles.exerciseRow}>
-                    <Image source={{ uri: e.image }} style={styles.exerciseThumb} />
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={styles.exerciseTitle}>{e.title}</Text>
-                      <Text style={styles.exerciseDuration}>{e.duration}</Text>
-                    </View>
-                    <Pressable style={styles.playBtn} onPress={() => {}}>
-                      <Ionicons name="play" size={16} color="#2E2E2E" />
-                    </Pressable>
-                  </View>
-                ))}
+                <WorkoutSnapshot workout={selectedWorkout} />
               </View>
+              </>
+              )}
             </ScrollView>
 
             {/* Bottom prompt */}
@@ -249,6 +280,42 @@ const styles = StyleSheet.create({
     paddingBottom: 120, // room for prompt
   },
 
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  errorContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    color: "#fecaca",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    backgroundColor: "#facc15",
+  },
+  retryBtnText: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
   title: {
     color: "rgba(255,255,255,0.95)",
     fontSize: 22,
@@ -257,30 +324,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 14,
   },
-
-  pillsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 6,
-    marginBottom: 10,
-  },
-  pill: {
-    width: 54,
-    borderRadius: 14,
-    paddingVertical: 10,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.10)",
-  },
-  pillActive: {
-    backgroundColor: "rgba(36, 12, 75, 0.85)",
-    borderColor: "rgba(255,255,255,0.18)",
-  },
-  pillDay: { fontSize: 10, fontWeight: "900", color: "rgba(20,20,20,0.75)" },
-  pillNum: { marginTop: 4, fontSize: 14, fontWeight: "900", color: "#111" },
-  pillDayActive: { color: "rgba(255,255,255,0.80)" },
-  pillNumActive: { color: "rgba(255,255,255,0.95)" },
 
   calendarWrap: {
     marginTop: 2,
@@ -304,18 +347,27 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  muscleFrame: {
-    alignSelf: "center",
-    width: "86%",
-    height: 155,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.92)",
+  muscleTagsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 10,
+  },
+  muscleTag: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "rgba(250, 204, 21, 0.85)",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.10)",
-    overflow: "hidden",
-    marginBottom: 16,
   },
-  muscleImg: { width: "100%", height: "100%" },
+  muscleTagText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#1f2937",
+  },
 
   sessionCard: {
     borderRadius: 18,
@@ -360,45 +412,11 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 11, fontWeight: "900", color: "#222" },
 
   exerciseHeader: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 10,
     color: "rgba(255,255,255,0.92)",
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "900",
-  },
-
-  exerciseRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  exerciseThumb: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  exerciseTitle: {
-    color: "rgba(255,255,255,0.95)",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  exerciseDuration: {
-    marginTop: 3,
-    color: "rgba(255,255,255,0.65)",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  playBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.10)",
   },
 
   promptWrap: {
