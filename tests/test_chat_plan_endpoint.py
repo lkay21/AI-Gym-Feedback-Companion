@@ -168,6 +168,11 @@ def test_generate_plan_success(client, monkeypatch, mock_authenticated_user):
     assert "structuredPlan" in payload
     assert payload["structuredPlan"]["planName"] == "Your 2-Week Fitness Plan"
     assert len(payload["structuredPlan"]["weeks"]) == 2  # 2 weeks
+    first_day = payload["structuredPlan"]["weeks"][0]["days"][0]
+    assert "workoutType" in first_day
+    assert "targetMuscleGroups" in first_day
+    assert "estimatedDurationMinutes" in first_day
+    assert "totalExpectedCaloriesBurnt" in first_day
     assert "Retrieved fitness plan with" in payload["message"]
 
 
