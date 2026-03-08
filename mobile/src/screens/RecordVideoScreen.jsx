@@ -17,6 +17,14 @@ export default function RecordVideoScreen({ navigation }) {
         </View>
 
         <View style={styles.card}>
+          <Pressable
+          style={styles.backButton}
+          onPress={() => navigation.navigate("Dashboard")}
+        >
+          <Ionicons name="arrow-back" size={18} color="rgba(255,255,255,0.92)" />
+          <Text style={styles.backButtonText}>Back to Dashboard</Text>
+          </Pressable>
+
           <View style={styles.cardHeader}>
             <Text style={styles.title}>Record a Video</Text>
             <Ionicons
@@ -82,6 +90,26 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(36, 12, 75, 0.35)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
+  },
+
+    backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    marginBottom: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.22)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+
+  backButtonText: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 12,
+    fontWeight: "800",
   },
 
   cardHeader: {
