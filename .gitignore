@@ -31,6 +31,19 @@ app/instance/
 *.swo
 *~
 
+# Node / Expo / React Native
+node_modules/
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+npm-debug.*
+*.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db
