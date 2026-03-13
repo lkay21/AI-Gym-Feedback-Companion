@@ -25,9 +25,12 @@ def register():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    username = data.get('username')
+    data = request.get_json() or {}
+    username = (data.get('username') or '').strip()
     password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Missing username or password'}), 400
 
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
