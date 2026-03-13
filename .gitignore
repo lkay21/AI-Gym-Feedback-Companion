@@ -4,8 +4,13 @@
 .env.*.local
 
 # Python
+venv/
+.venv/
 __pycache__/
 *.py[cod]
+.coverage
+htmlcov/
+.pytest_cache/
 *$py.class
 *.so
 .Python
