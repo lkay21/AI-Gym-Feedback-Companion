@@ -21,11 +21,15 @@ jobs:
       - name: Run tests
         run: |
           if [ -n "$(find tests -name 'test_*.py' -o -name '*_test.py' 2>/dev/null)" ]; then
-            pytest tests -v \
-              --cov=app.chat_module.routes \
-              --cov=app.profile_module.service \
-              --cov-report=term-missing \
-              --cov-fail-under=40
+            pytest tests -v
           else
             echo "No test files found in tests/ directory, skipping tests"
           fi
+
+      - name: Run health onboarding tests with coverage
+        run: |
+          pytest tests/test_llm_conversation_health_onboarding.py tests/test_profile_service_health.py tests/test_chat_plan_endpoint.py -v \
+            --cov=app.chat_module.routes \
+            --cov=app.profile_module.service \
+            --cov-report=term-missing \
+            --cov-fail-under=65

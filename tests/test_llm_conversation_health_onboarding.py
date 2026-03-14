@@ -20,6 +20,9 @@ from app.chat_module.routes import (
     _parse_health_context,
     _parse_fixed_value,
     FIXED_FIELD_QUESTIONS,
+    validate_chat_request,
+    validate_plan_request,
+    _summarize_calendar_plan,
 )
 from app.profile_module.models import HEALTH_PROFILE_TIMESTAMP
 
@@ -347,6 +350,101 @@ def test_parse_fixed_value_gender():
     assert _parse_fixed_value("gender", "non-binary") == "non-binary"
 
 
+def test_validate_chat_request_no_body():
+    """validate_chat_request(None) returns False and error message."""
+    valid, msg = validate_chat_request(None)
+    assert valid is False
+    assert "body" in msg.lower() or "required" in msg.lower()
+
+
+def test_validate_chat_request_empty_message():
+    """validate_chat_request with empty message returns False."""
+    valid, msg = validate_chat_request({"message": "   "})
+    assert valid is False
+    assert "message" in msg.lower() or "empty" in msg.lower()
+
+
+def test_validate_chat_request_message_too_long():
+    """validate_chat_request with message > 2000 chars returns False."""
+    valid, msg = validate_chat_request({"message": "x" * 2001})
+    assert valid is False
+    assert "long" in msg.lower() or "2000" in msg
+
+
+def test_validate_chat_request_valid():
+    """validate_chat_request with non-empty message returns True."""
+    valid, msg = validate_chat_request({"message": "hello"})
+    assert valid is True
+    assert msg is None
+
+
+def test_validate_plan_request_missing_start_date():
+    """validate_plan_request without startDate returns False."""
+    valid, msg = validate_plan_request({"message": "hello", "startDate": "   "})
+    assert valid is False
+    assert "startDate" in msg or "start" in msg.lower()
+
+
+def test_validate_plan_request_valid():
+    """validate_plan_request with message and startDate returns True."""
+    valid, msg = validate_plan_request({"message": "hello", "startDate": "2025-01-01"})
+    assert valid is True
+    assert msg is None
+
+
+# ---- _summarize_calendar_plan ----
+
+def test_summarize_calendar_plan_empty_dict():
+    """_summarize_calendar_plan({}) returns empty string."""
+    assert _summarize_calendar_plan({}) == ""
+
+
+def test_summarize_calendar_plan_no_weeks():
+    """_summarize_calendar_plan with no weeks returns empty string."""
+    assert _summarize_calendar_plan({"weeks": []}) == ""
+
+
+def test_summarize_calendar_plan_rest_day():
+    """_summarize_calendar_plan includes rest day line."""
+    cal = {
+        "weeks": [
+            {"weekNumber": 1, "days": [{"date": "2025-01-01", "workoutType": "rest", "exercises": []}]}
+        ]
+    }
+    summary = _summarize_calendar_plan(cal)
+    assert "2025-01-01" in summary
+    assert "Rest" in summary
+
+
+def test_summarize_calendar_plan_with_exercises():
+    """_summarize_calendar_plan includes workout and exercise names."""
+    cal = {
+        "weeks": [
+            {
+                "weekNumber": 1,
+                "days": [
+                    {
+                        "date": "2025-01-02",
+                        "workoutType": "Upper",
+                        "exercises": [{"name": "Bench Press"}, {"name": "Row"}],
+                    }
+                ],
+            }
+        ]
+    }
+    summary = _summarize_calendar_plan(cal)
+    assert "2025-01-02" in summary
+    assert "Upper" in summary
+    assert "Bench Press" in summary
+    assert "Row" in summary
+
+
+def test_summarize_calendar_plan_not_dict():
+    """_summarize_calendar_plan with non-dict returns empty string."""
+    assert _summarize_calendar_plan(None) == ""
+    assert _summarize_calendar_plan([]) == ""
+
+
 def test_health_onboarding_follow_up_no_message_no_pending_returns_complete(app, monkeypatch):
     """In follow_up with no pending questions and empty message, return phase complete."""
     from app.chat_module import routes as chat_routes
@@ -384,4 +482,74 @@ def test_health_onboarding_gemini_not_configured_returns_500(app, monkeypatch):
     r = client.post("/api/chat/health-onboarding", json={"message": "30"})
     assert r.status_code == 500
     data = r.get_json()
+    assert "error" in data
+
+
+# ---- chat() and health_check() endpoints ----
+
+def test_chat_validation_empty_message_returns_400(app):
+    """POST /api/chat with empty message returns 400."""
+    client = app.test_client()
+    r = client.post("/api/chat", json={"message": "   "})
+    assert r.status_code == 400
+    data = r.get_json()
+    assert "error" in data and ("message" in data["error"].lower() or "empty" in data["error"].lower())
+
+
+def test_chat_success_returns_200_with_mock(app, monkeypatch):
+    """POST /api/chat with valid message and mock Gemini returns 200."""
+    class MockGemini:
+        def __init__(self):
+            self.model_name = "mock"
+        def generate_response(self, user_message, conversation_history=None, user_profile=None):
+            return "Mocked response"
+    from app.chat_module import routes as chat_routes
+    monkeypatch.setattr(chat_routes, "GeminiClient", MockGemini)
+    client = app.test_client()
+    r = client.post("/api/chat", json={"message": "Hello"})
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data.get("success") is True
+    assert "response" in data
+    assert data["response"] == "Mocked response"
+
+
+def test_chat_gemini_error_returns_500(app, monkeypatch):
+    """POST /api/chat when Gemini generate_response raises returns 500."""
+    class FailingGemini:
+        def __init__(self):
+            self.model_name = "mock"
+        def generate_response(self, user_message, conversation_history=None, user_profile=None):
+            raise RuntimeError("API error")
+    from app.chat_module import routes as chat_routes
+    monkeypatch.setattr(chat_routes, "GeminiClient", FailingGemini)
+    client = app.test_client()
+    r = client.post("/api/chat", json={"message": "Hello"})
+    assert r.status_code == 500
+    data = r.get_json()
+    assert "error" in data
+
+
+def test_health_check_returns_200_when_configured(app):
+    """GET /api/chat/health returns 200 and configured True when GeminiClient works."""
+    client = app.test_client()
+    r = client.get("/api/chat/health")
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data.get("status") == "healthy"
+    assert data.get("configured") is True
+
+
+def test_health_check_returns_503_when_not_configured(app, monkeypatch):
+    """GET /api/chat/health returns 503 when GeminiClient raises ValueError."""
+    class FailingGemini:
+        def __init__(self):
+            raise ValueError("No API key")
+    from app.chat_module import routes as chat_routes
+    monkeypatch.setattr(chat_routes, "GeminiClient", FailingGemini)
+    client = app.test_client()
+    r = client.get("/api/chat/health")
+    assert r.status_code == 503
+    data = r.get_json()
+    assert data.get("configured") is False
     assert "error" in data
