@@ -13,7 +13,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.db_instance import db
 from app.auth_module.routes import auth_bp
-from app.auth_module.models import User  # noqa: F401 - needed so db.create_all() creates table
+
+# Import User if present (SQLAlchemy auth); develop may use Supabase-only auth
+try:
+    from app.auth_module.models import User  # noqa: F401
+except ImportError:
+    User = None
 
 
 @pytest.fixture

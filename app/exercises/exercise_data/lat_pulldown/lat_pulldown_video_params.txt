@@ -1,0 +1,4 @@
+Frame Count: 680
+FPS: 59.94005994005994
+Frame Width: 1920
+Frame Height: 888

@@ -1,0 +1,4 @@
+Frame Count: 282
+FPS: 60.0
+Frame Width: 888
+Frame Height: 1920
