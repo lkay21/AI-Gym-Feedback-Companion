@@ -1,41 +1,38 @@
-"""Unit tests for auth/register and auth/login APIs."""
+"""Unit tests for auth/register and auth/login APIs (Supabase-backed)."""
 import pytest
 
+# Valid payloads for develop API: register requires username + email + password
+REGISTER_PAYLOAD = {
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "password": "securepass123",
+}
+LOGIN_PAYLOAD = {"username": "newuser@example.com", "password": "securepass123"}
 
-# ---- Register API ----
-
-def test_register_success(app):
-    """POST /auth/register with valid username and password returns 201 and creates user."""
-    client = app.test_client()
-    response = client.post(
-        "/auth/register",
-        json={"username": "newuser", "password": "securepass123"},
-        content_type="application/json",
-    )
-    assert response.status_code == 201
-    data = response.get_json()
-    assert data == {"message": "User registered successfully"}
-
-    # User can log in after registration
-    login_resp = client.post(
-        "/auth/login",
-        json={"username": "newuser", "password": "securepass123"},
-        content_type="application/json",
-    )
-    assert login_resp.status_code == 200
-    assert login_resp.get_json() == {"message": "Login successful"}
-
+# ---- Register API (validation only: no Supabase mock needed) ----
 
 def test_register_missing_username(app):
     """POST /auth/register without username returns 400."""
     client = app.test_client()
     response = client.post(
         "/auth/register",
-        json={"password": "securepass123"},
+        json={"email": "a@b.com", "password": "securepass123"},
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username, email, and password are required"}
+
+
+def test_register_missing_email(app):
+    """POST /auth/register without email returns 400."""
+    client = app.test_client()
+    response = client.post(
+        "/auth/register",
+        json={"username": "newuser", "password": "securepass123"},
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Username, email, and password are required"}
 
 
 def test_register_missing_password(app):
@@ -43,11 +40,11 @@ def test_register_missing_password(app):
     client = app.test_client()
     response = client.post(
         "/auth/register",
-        json={"username": "newuser"},
+        json={"username": "newuser", "email": "newuser@example.com"},
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username, email, and password are required"}
 
 
 def test_register_empty_username(app):
@@ -55,11 +52,11 @@ def test_register_empty_username(app):
     client = app.test_client()
     response = client.post(
         "/auth/register",
-        json={"username": "", "password": "securepass123"},
+        json={"username": "", "email": "a@b.com", "password": "securepass123"},
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username, email, and password are required"}
 
 
 def test_register_empty_password(app):
@@ -67,32 +64,51 @@ def test_register_empty_password(app):
     client = app.test_client()
     response = client.post(
         "/auth/register",
-        json={"username": "newuser", "password": ""},
+        json={"username": "newuser", "email": "newuser@example.com", "password": ""},
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username, email, and password are required"}
 
 
-def test_register_username_already_exists(app):
-    """POST /auth/register with existing username returns 400."""
+def test_register_invalid_email(app):
+    """POST /auth/register with invalid email format returns 400."""
     client = app.test_client()
-    client.post(
-        "/auth/register",
-        json={"username": "existinguser", "password": "firstpass"},
-        content_type="application/json",
-    )
     response = client.post(
         "/auth/register",
-        json={"username": "existinguser", "password": "secondpass"},
+        json={"username": "newuser", "email": "not-an-email", "password": "securepass123"},
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Username already exists"}
+    assert response.get_json() == {"error": "Invalid email format"}
+
+
+def test_register_short_password(app):
+    """POST /auth/register with password < 6 chars returns 400."""
+    client = app.test_client()
+    response = client.post(
+        "/auth/register",
+        json={"username": "newuser", "email": "newuser@example.com", "password": "short"},
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Password must be at least 6 characters long"}
+
+
+def test_register_short_username(app):
+    """POST /auth/register with username < 3 chars returns 400."""
+    client = app.test_client()
+    response = client.post(
+        "/auth/register",
+        json={"username": "ab", "email": "ab@example.com", "password": "securepass123"},
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Username must be at least 3 characters long"}
 
 
 def test_register_empty_body(app):
-    """POST /auth/register with empty JSON body returns 400 (missing username/password)."""
+    """POST /auth/register with empty JSON body returns 400."""
     client = app.test_client()
     response = client.post(
         "/auth/register",
@@ -100,59 +116,46 @@ def test_register_empty_body(app):
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "No data provided"}
 
 
-# ---- Login API ----
+# ---- Register API (with Supabase mock) ----
 
-def test_login_success(app):
-    """POST /auth/login with correct credentials returns 200."""
+def test_register_success(app_with_supabase_mock):
+    """POST /auth/register with valid username, email, password returns 201."""
+    app, _ = app_with_supabase_mock
     client = app.test_client()
-    client.post(
+    response = client.post(
         "/auth/register",
-        json={"username": "logintest", "password": "mypassword"},
+        json=REGISTER_PAYLOAD,
         content_type="application/json",
     )
-    response = client.post(
-        "/auth/login",
-        json={"username": "logintest", "password": "mypassword"},
-        content_type="application/json",
-    )
-    assert response.status_code == 200
-    assert response.get_json() == {"message": "Login successful"}
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data["message"] == "User registered successfully"
+    assert "user" in data
+    assert data["user"]["username"] == "newuser"
+    assert "email" in data["user"] and "id" in data["user"]
 
 
-def test_login_invalid_password(app):
-    """POST /auth/login with wrong password returns 401."""
+def test_register_email_already_registered(app_with_supabase_mock):
+    """POST /auth/register when email already exists returns 400."""
+    app, supabase_mock = app_with_supabase_mock
+    supabase_mock.auth.sign_up.side_effect = Exception("User already registered")
     client = app.test_client()
-    client.post(
+    response = client.post(
         "/auth/register",
-        json={"username": "logintest", "password": "correct"},
+        json=REGISTER_PAYLOAD,
         content_type="application/json",
     )
-    response = client.post(
-        "/auth/login",
-        json={"username": "logintest", "password": "wrong"},
-        content_type="application/json",
-    )
-    assert response.status_code == 401
-    assert response.get_json() == {"error": "Invalid username or password"}
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Email already registered"}
 
 
-def test_login_nonexistent_user(app):
-    """POST /auth/login with unknown username returns 401."""
-    client = app.test_client()
-    response = client.post(
-        "/auth/login",
-        json={"username": "nobody", "password": "any"},
-        content_type="application/json",
-    )
-    assert response.status_code == 401
-    assert response.get_json() == {"error": "Invalid username or password"}
-
+# ---- Login API (validation only) ----
 
 def test_login_missing_username(app):
-    """POST /auth/login without username returns 400 (missing credentials)."""
+    """POST /auth/login without username returns 400."""
     client = app.test_client()
     response = client.post(
         "/auth/login",
@@ -160,24 +163,19 @@ def test_login_missing_username(app):
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username/email and password are required"}
 
 
 def test_login_missing_password(app):
-    """POST /auth/login without password returns 400 (missing credentials)."""
+    """POST /auth/login without password returns 400."""
     client = app.test_client()
-    client.post(
-        "/auth/register",
-        json={"username": "nopass", "password": "real"},
-        content_type="application/json",
-    )
     response = client.post(
         "/auth/login",
-        json={"username": "nopass"},
+        json={"username": "user@example.com"},
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username/email and password are required"}
 
 
 def test_login_empty_username(app):
@@ -189,21 +187,116 @@ def test_login_empty_username(app):
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username/email and password are required"}
 
 
 def test_login_empty_password(app):
     """POST /auth/login with empty password returns 400."""
     client = app.test_client()
-    client.post(
-        "/auth/register",
-        json={"username": "empty", "password": "real"},
-        content_type="application/json",
-    )
     response = client.post(
         "/auth/login",
-        json={"username": "empty", "password": ""},
+        json={"username": "user@example.com", "password": ""},
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.get_json() == {"error": "Missing username or password"}
+    assert response.get_json() == {"error": "Username/email and password are required"}
+
+
+# ---- Login API (with Supabase mock) ----
+
+def test_login_success(app_with_supabase_mock):
+    """POST /auth/login with correct credentials returns 200."""
+    app, _ = app_with_supabase_mock
+    client = app.test_client()
+    response = client.post(
+        "/auth/login",
+        json=LOGIN_PAYLOAD,
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["message"] == "Login successful"
+    assert data["user"]["email"] == "test@example.com"
+
+
+def test_login_invalid_password(app_with_supabase_mock):
+    """POST /auth/login with wrong password returns 401."""
+    app, supabase_mock = app_with_supabase_mock
+    supabase_mock.auth.sign_in_with_password.side_effect = Exception("Invalid login credentials")
+    client = app.test_client()
+    response = client.post(
+        "/auth/login",
+        json=LOGIN_PAYLOAD,
+        content_type="application/json",
+    )
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "Invalid email or password"}
+
+
+def test_login_nonexistent_user(app_with_supabase_mock):
+    """POST /auth/login with unknown email returns 401."""
+    app, supabase_mock = app_with_supabase_mock
+    supabase_mock.auth.sign_in_with_password.side_effect = Exception("Invalid login credentials")
+    client = app.test_client()
+    response = client.post(
+        "/auth/login",
+        json={"username": "nobody@example.com", "password": "any"},
+        content_type="application/json",
+    )
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "Invalid email or password"}
+
+
+# ---- Logout, check session, get user (with Supabase mock) ----
+
+def test_logout_success(app_with_supabase_mock):
+    """POST /auth/logout with session returns 200 and clears session."""
+    app, _ = app_with_supabase_mock
+    client = app.test_client()
+    # Log in first to set session
+    client.post("/auth/login", json=LOGIN_PAYLOAD, content_type="application/json")
+    response = client.post("/auth/logout")
+    assert response.status_code == 200
+    assert response.get_json() == {"message": "Logged out successfully"}
+
+
+def test_check_session_not_logged_in(app):
+    """GET /auth/check when not logged in returns 200 with logged_in false."""
+    client = app.test_client()
+    response = client.get("/auth/check")
+    assert response.status_code == 200
+    assert response.get_json() == {"logged_in": False}
+
+
+def test_check_session_logged_in(app_with_supabase_mock):
+    """GET /auth/check when logged in returns 200 with logged_in true and user."""
+    app, _ = app_with_supabase_mock
+    client = app.test_client()
+    client.post("/auth/login", json=LOGIN_PAYLOAD, content_type="application/json")
+    response = client.get("/auth/check")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["logged_in"] is True
+    assert "user" in data
+    assert data["user"]["email"] == "test@example.com"
+
+
+def test_get_user_not_authenticated(app):
+    """GET /auth/user without session returns 401."""
+    client = app.test_client()
+    response = client.get("/auth/user")
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "Not authenticated"}
+
+
+def test_get_user_success(app_with_supabase_mock):
+    """GET /auth/user when logged in returns 200 with user info."""
+    app, _ = app_with_supabase_mock
+    client = app.test_client()
+    client.post("/auth/login", json=LOGIN_PAYLOAD, content_type="application/json")
+    response = client.get("/auth/user")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "user" in data
+    assert data["user"]["email"] == "test@example.com"
+    assert data["user"]["username"] == "testuser"
