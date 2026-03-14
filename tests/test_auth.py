@@ -1,4 +1,6 @@
 """Unit tests for auth/register and auth/login APIs (Supabase-backed)."""
+from unittest.mock import patch
+
 import pytest
 
 # Valid payloads for develop API: register requires username + email + password
@@ -107,6 +109,20 @@ def test_register_short_username(app):
     assert response.get_json() == {"error": "Username must be at least 3 characters long"}
 
 
+def test_register_username_invalid_characters(app):
+    """POST /auth/register with username containing invalid chars returns 400."""
+    client = app.test_client()
+    response = client.post(
+        "/auth/register",
+        json={"username": "user name", "email": "user@example.com", "password": "securepass123"},
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "Username can only contain letters, numbers, underscores, and hyphens"
+    }
+
+
 def test_register_empty_body(app):
     """POST /auth/register with empty JSON body returns 400."""
     client = app.test_client()
@@ -150,6 +166,71 @@ def test_register_email_already_registered(app_with_supabase_mock):
     )
     assert response.status_code == 400
     assert response.get_json() == {"error": "Email already registered"}
+
+
+def test_register_password_requirement_error(app_with_supabase_mock):
+    """POST /auth/register when Supabase returns password error returns 400."""
+    app, supabase_mock = app_with_supabase_mock
+    supabase_mock.auth.sign_up.side_effect = Exception("Password should be at least 6 characters")
+    client = app.test_client()
+    response = client.post(
+        "/auth/register",
+        json=REGISTER_PAYLOAD,
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Password does not meet requirements"}
+
+
+def test_register_server_config_error(app):
+    """POST /auth/register when Supabase not configured returns 500."""
+    client = app.test_client()
+    with patch("app.auth_module.routes.get_supabase_client") as m:
+        m.side_effect = ValueError("SUPABASE_URL not set")
+        response = client.post(
+            "/auth/register",
+            json=REGISTER_PAYLOAD,
+            content_type="application/json",
+        )
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Server configuration error. Please contact administrator."}
+
+
+def test_register_email_confirmation_required(app_with_supabase_mock):
+    """POST /auth/register when email confirmation required returns 201 with message."""
+    from types import SimpleNamespace
+
+    app, supabase_mock = app_with_supabase_mock
+    user = SimpleNamespace(
+        id="uid", email="new@example.com", created_at="2024-01-01",
+        user_metadata={"username": "newuser"},
+    )
+    supabase_mock.auth.sign_up.return_value = SimpleNamespace(user=user, session=None)
+    client = app.test_client()
+    response = client.post(
+        "/auth/register",
+        json=REGISTER_PAYLOAD,
+        content_type="application/json",
+    )
+    assert response.status_code == 201
+    data = response.get_json()
+    assert "Please check your email to confirm" in data["message"]
+    assert data["user"]["email_confirmed"] is False
+
+
+def test_register_profile_service_failure_still_returns_201(app_with_supabase_mock):
+    """POST /auth/register when ProfileService.update_profile fails still returns 201."""
+    app, supabase_mock = app_with_supabase_mock
+    with patch("app.auth_module.routes.ProfileService") as ProfileServiceMock:
+        ProfileServiceMock.return_value.update_profile.side_effect = Exception("DynamoDB error")
+        client = app.test_client()
+        response = client.post(
+            "/auth/register",
+            json=REGISTER_PAYLOAD,
+            content_type="application/json",
+        )
+    assert response.status_code == 201
+    assert response.get_json()["message"] == "User registered successfully"
 
 
 # ---- Login API (validation only) ----
@@ -247,6 +328,34 @@ def test_login_nonexistent_user(app_with_supabase_mock):
     assert response.get_json() == {"error": "Invalid email or password"}
 
 
+def test_login_email_not_confirmed(app_with_supabase_mock):
+    """POST /auth/login when email not confirmed returns 401."""
+    app, supabase_mock = app_with_supabase_mock
+    supabase_mock.auth.sign_in_with_password.side_effect = Exception("Email not confirmed")
+    client = app.test_client()
+    response = client.post(
+        "/auth/login",
+        json=LOGIN_PAYLOAD,
+        content_type="application/json",
+    )
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "Please confirm your email before logging in"}
+
+
+def test_login_server_config_error(app):
+    """POST /auth/login when Supabase not configured returns 500."""
+    client = app.test_client()
+    with patch("app.auth_module.routes.get_supabase_client") as m:
+        m.side_effect = ValueError("SUPABASE_URL not set")
+        response = client.post(
+            "/auth/login",
+            json=LOGIN_PAYLOAD,
+            content_type="application/json",
+        )
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Server configuration error. Please contact administrator."}
+
+
 # ---- Logout, check session, get user (with Supabase mock) ----
 
 def test_logout_success(app_with_supabase_mock):
@@ -300,3 +409,13 @@ def test_get_user_success(app_with_supabase_mock):
     assert "user" in data
     assert data["user"]["email"] == "test@example.com"
     assert data["user"]["username"] == "testuser"
+
+
+def test_supabase_client_raises_when_credentials_missing():
+    """get_supabase_client() raises ValueError when SUPABASE_URL or key not set."""
+    from app.auth_module import supabase_client
+
+    with patch.object(supabase_client, "SUPABASE_URL", None):
+        with pytest.raises(ValueError) as exc_info:
+            supabase_client.get_supabase_client()
+        assert "SUPABASE" in str(exc_info.value) and "credentials" in str(exc_info.value).lower()

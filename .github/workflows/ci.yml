@@ -21,7 +21,7 @@ jobs:
       - name: Run tests
         run: |
           if [ -n "$(find tests -name 'test_*.py' -o -name '*_test.py' 2>/dev/null)" ]; then
-            pytest tests/ -v --cov=app.auth_module --cov-report=term-missing --cov-fail-under=65
+            pytest tests/ -v --cov=app.auth_module --cov-report=term-missing --cov-fail-under=80
           else
             echo "No test files found in tests/ directory, skipping tests"
           fi
