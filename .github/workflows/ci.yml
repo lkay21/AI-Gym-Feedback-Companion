@@ -22,7 +22,11 @@ jobs:
       - name: Run tests
         run: |
           if [ -n "$(find tests -name 'test_*.py' -o -name '*_test.py' 2>/dev/null)" ]; then
-            pytest tests
+            pytest tests -v
           else
             echo "No test files found in tests/ directory, skipping tests"
           fi
+
+      - name: Run integration tests (Chat API with Auth)
+        run: |
+          pytest tests/test_integration_chat_auth.py -v --cov=app --cov-report=term-missing
