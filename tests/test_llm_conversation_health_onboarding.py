@@ -91,7 +91,6 @@ class InMemoryHealthDataService:
         return cls._store.get(user_id)
 
     def get_health_profile(self, user_id: str) -> InMemoryHealthProfile | None:
-    def get_health_profile(self, user_id: str):
         return self._get(user_id)
 
     def create_or_update_health_profile(
