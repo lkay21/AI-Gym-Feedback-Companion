@@ -4,8 +4,13 @@
 .env.*.local
 
 # Python
+venv/
+.venv/
 __pycache__/
 *.py[cod]
+.coverage
+htmlcov/
+.pytest_cache/
 *$py.class
 *.so
 .Python
@@ -25,6 +30,19 @@ app/instance/
 *.swp
 *.swo
 *~
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+npm-debug.*
+*.tsbuildinfo
 
 # OS
 .DS_Store
