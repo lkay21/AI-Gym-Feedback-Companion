@@ -196,6 +196,12 @@ def app(monkeypatch):
 
 
 def _session_with_user(client, user_id: str = "test-user-health"):
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_id
+        sess["username"] = "testuser"
+    return user_id
+
+
 def _set_authenticated_user(client, user_id: str = "test-user-llm-health"):
     with client.session_transaction() as sess:
         sess["user_id"] = user_id
