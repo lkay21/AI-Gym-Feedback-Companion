@@ -104,13 +104,6 @@ class InMemoryHealthDataService:
         fitness_goal: str | None = None,
         context: dict | None = None,
     ) -> InMemoryHealthProfile:
-        age=None,
-        height=None,
-        weight=None,
-        gender=None,
-        fitness_goal=None,
-        context=None,
-    ):
         existing = self._get(user_id)
         if existing is None:
             existing = InMemoryHealthProfile(
