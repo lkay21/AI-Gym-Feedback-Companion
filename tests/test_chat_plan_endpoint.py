@@ -168,6 +168,11 @@ def test_generate_plan_success(client, monkeypatch, mock_authenticated_user):
     assert "structuredPlan" in payload
     assert payload["structuredPlan"]["planName"] == "Your 2-Week Fitness Plan"
     assert len(payload["structuredPlan"]["weeks"]) == 2  # 2 weeks
+    first_day = payload["structuredPlan"]["weeks"][0]["days"][0]
+    assert "workoutType" in first_day
+    assert "targetMuscleGroups" in first_day
+    assert "estimatedDurationMinutes" in first_day
+    assert "totalExpectedCaloriesBurnt" in first_day
     assert "Retrieved fitness plan with" in payload["message"]
 
 
@@ -196,3 +201,46 @@ def test_generate_plan_not_authenticated(client):
     assert response.status_code == 401
     payload = response.get_json()
     assert "Not authenticated" in payload["error"]
+
+
+def test_generate_plan_no_fitness_goal_returns_400(client, monkeypatch, mock_authenticated_user):
+    """Test 400 when health profile exists but fitness_goal is not set."""
+    class MockHealthProfileNoGoal:
+        def to_dict(self):
+            return {"age": 25, "height": 175, "weight": 70, "gender": "male"}  # no fitness_goal
+
+    class MockHealthDataService:
+        def get_health_profile(self, user_id):
+            return MockHealthProfileNoGoal()
+
+    monkeypatch.setattr("app.profile_module.service.HealthDataService", MockHealthDataService)
+
+    response = client.post("/api/chat/plan", json={})
+    assert response.status_code == 400
+    payload = response.get_json()
+    assert "Fitness goal" in payload["error"] or "fitness" in payload["error"].lower()
+    assert payload.get("requiresOnboarding") is True
+
+
+def test_generate_plan_no_plan_returns_404(client, monkeypatch, mock_authenticated_user):
+    """Test 404 when user has health profile with goal but no plan in DB."""
+    class MockHealthProfile:
+        def to_dict(self):
+            return {"age": 25, "height": 175, "weight": 70, "gender": "male", "fitness_goal": "build muscle"}
+
+    class MockHealthDataService:
+        def get_health_profile(self, user_id):
+            return MockHealthProfile()
+
+    class MockFitnessPlanService:
+        def get_by_user(self, user_id):
+            return []  # no plan
+
+    monkeypatch.setattr("app.profile_module.service.HealthDataService", MockHealthDataService)
+    monkeypatch.setattr("app.fitness_plan_module.service.FitnessPlanService", MockFitnessPlanService)
+
+    response = client.post("/api/chat/plan", json={})
+    assert response.status_code == 404
+    payload = response.get_json()
+    assert "No fitness plan" in payload["error"] or "plan" in payload["error"].lower()
+    assert payload.get("success") is False

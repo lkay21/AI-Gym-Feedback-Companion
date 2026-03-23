@@ -95,23 +95,27 @@ def mapDatabasePlanToCalendar(plan_entries: List[Dict[str, Any]]) -> Dict[str, A
         week_days: List[Dict[str, Any]] = []
         for day_in_week in range(7):
             date_str = current_date.isoformat()
-            exercises = exercises_by_date.get(date_str, [])
-            
+            raw_exercises = exercises_by_date.get(date_str, [])
+            normalized_exercises = [_normalize_database_exercise(ex) for ex in raw_exercises]
+            normalized_exercises = [ex for ex in normalized_exercises if ex.get("name")]
+
+            target_muscle_groups = sorted(
+                {ex.get("muscleGroup") for ex in normalized_exercises if ex.get("muscleGroup")}
+            )
+            total_expected_calories = int(
+                sum(_safe_float(ex.get("calories")) for ex in normalized_exercises)
+            )
+            estimated_duration_minutes = len(normalized_exercises) * 10
+            workout_type = _workout_type_from_muscle_groups(target_muscle_groups, normalized_exercises)
+
             week_days.append({
                 "date": date_str,
-                "workoutType": "Workout" if exercises else "Rest",
-                "exercises": [
-                    {
-                        "name": ex.get("exercise_name", ""),
-                        "sets": 3,  # Default sets
-                        "reps": ex.get("rep_count", 0),
-                        "weight": f"{ex.get('weight_to_lift_suggestion', 0)} lbs",
-                        "muscleGroup": ex.get("muscle_group", ""),
-                        "calories": ex.get("expected_calories_burnt", 0),
-                        "description": ex.get("exercise_description", "")
-                    }
-                    for ex in exercises
-                ]
+                "workoutType": workout_type,
+                "title": workout_type,
+                "targetMuscleGroups": target_muscle_groups,
+                "estimatedDurationMinutes": estimated_duration_minutes,
+                "totalExpectedCaloriesBurnt": total_expected_calories,
+                "exercises": normalized_exercises,
             })
             current_date += timedelta(days=1)
         
@@ -125,6 +129,60 @@ def mapDatabasePlanToCalendar(plan_entries: List[Dict[str, Any]]) -> Dict[str, A
         "startDate": start_date.isoformat(),
         "weeks": weeks
     }
+
+
+def _normalize_database_exercise(entry: Dict[str, Any]) -> Dict[str, Any]:
+    name = _safe_str(entry.get("exercise_name")) or ""
+    reps = _safe_int(entry.get("rep_count"))
+    sets = 3
+    weight = _format_weight(entry.get("weight_to_lift_suggestion"))
+    muscle_group = _safe_str(entry.get("muscle_group")) or ""
+    calories = int(round(_safe_float(entry.get("expected_calories_burnt"))))
+    description = _safe_str(entry.get("exercise_description")) or ""
+
+    return {
+        "name": name,
+        "title": name,
+        "sets": sets,
+        "reps": reps,
+        "weight": weight,
+        "muscleGroup": muscle_group,
+        "calories": calories,
+        "description": description,
+        "durationMinutes": 10,
+        "duration": "10 min",
+    }
+
+
+def _workout_type_from_muscle_groups(
+    target_muscle_groups: List[str],
+    exercises: List[Dict[str, Any]],
+) -> str:
+    if not exercises:
+        return "Rest"
+    if not target_muscle_groups:
+        return "Workout"
+    if len(target_muscle_groups) == 1:
+        return f"{target_muscle_groups[0]} Focus"
+    if len(target_muscle_groups) == 2:
+        return " & ".join(target_muscle_groups)
+    return "Full Body"
+
+
+def _safe_float(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _format_weight(value: Any) -> str:
+    weight = _safe_float(value)
+    if weight <= 0:
+        return ""
+    if float(weight).is_integer():
+        return f"{int(weight)} lbs"
+    return f"{weight:g} lbs"
 
 
 def _parse_start_date(start_date: str) -> date:

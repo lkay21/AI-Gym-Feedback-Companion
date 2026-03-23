@@ -101,6 +101,14 @@ export const chatAPI = {
       profile,
     });
   },
+  // Gemini-powered chatbot endpoint used by the mobile ChatBot screen
+  sendChatbotMessage: async (message, conversationHistory = [], profile = {}) => {
+    return await apiRequest('POST', '/api/chat/llm', {
+      message,
+      conversation_history: conversationHistory,
+      profile,
+    });
+  },
   // Generate 2-week fitness plan from database (uses authenticated user's health profile)
   generatePlan: async () => {
     return await apiRequest('POST', '/api/chat/plan', {});

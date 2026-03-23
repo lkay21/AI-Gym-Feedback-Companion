@@ -131,29 +131,38 @@ class GeminiClient:
                 raise Exception(f"Failed to generate AI response: {error_msg}")
     
     def _build_profile_context(self, profile: Dict[str, Any]) -> str:
-        """Build context string from user profile"""
+        """Build context string from user profile and optional plan summary."""
         context_parts = []
-        
-        if profile.get('name'):
+
+        if profile.get("name"):
             context_parts.append(f"Name: {profile['name']}")
-        if profile.get('age'):
+        if profile.get("age"):
             context_parts.append(f"Age: {profile['age']} years old")
-        if profile.get('gender'):
+        if profile.get("gender"):
             context_parts.append(f"Gender: {profile['gender']}")
-        if profile.get('height'):
+        if profile.get("height"):
             context_parts.append(f"Height: {profile['height']}")
-        if profile.get('weight'):
+        if profile.get("weight"):
             context_parts.append(f"Weight: {profile['weight']}")
-        if profile.get('fitness_goals'):
-            goals = profile['fitness_goals']
+        if profile.get("fitness_goals"):
+            goals = profile["fitness_goals"]
             if isinstance(goals, list):
                 goals_str = ", ".join(goals)
             else:
                 goals_str = str(goals)
             context_parts.append(f"Fitness Goals: {goals_str}")
-        if profile.get('activity_level'):
+        if profile.get("activity_level"):
             context_parts.append(f"Activity Level: {profile['activity_level']}")
-        
+        if profile.get("fitness_plan_summary"):
+            context_parts.append(
+                "Current Fitness Plan (summary): "
+                + str(profile["fitness_plan_summary"])
+            )
+
         if context_parts:
-            return "User Profile Information:\n" + "\n".join(f"- {part}" for part in context_parts) + "\n"
+            return (
+                "User Profile Information:\n"
+                + "\n".join(f"- {part}" for part in context_parts)
+                + "\n"
+            )
         return ""

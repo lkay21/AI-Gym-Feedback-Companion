@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { chatAPI } from "../services/api";
 import MenuDropdown from "../components/MenuDropdown";
 
 const BOT_NAME = "Fred";
@@ -25,60 +26,8 @@ export default function ChatBotScreen({ route }) {
       {
         id: "m1",
         role: "bot",
-        text: `Hello! I'm ${BOT_NAME}, your AI\nFitness Companion.`,
+        text: `Hello! I'm ${BOT_NAME}, your AI\nFitness Companion.\n\nTell me your fitness goal or ask a question to get started.`,
         kind: "headline",
-      },
-      { id: "m2", role: "bot", text: "What is your full name or nickname\nyou'd like to use?" },
-      { id: "m3", role: "user", text: "Mythrai" },
-
-      { id: "m4", role: "bot", text: "What is your age?" },
-      { id: "m5", role: "user", text: "21" },
-
-      { id: "m6", role: "bot", text: "How much do you weigh (kg/lbs)?" },
-      { id: "m7", role: "user", text: "48 kg" },
-
-      { id: "m8", role: "bot", text: "What is your gender?" },
-      { id: "m9", role: "user", text: "Female" },
-
-      { id: "m10", role: "bot", text: "What is your height (cm/ft)?" },
-      { id: "m11", role: "user", text: "5'1" },
-
-      { id: "m12", role: "bot", text: "What are your fitness goals?" },
-      { id: "m13", role: "user", text: "Lose weight and get toned" },
-
-      {
-        id: "m14",
-        role: "bot",
-        text:
-          "Here is you suggested fitness plan:\n" +
-          "Lift weights 4 times a week, eat\n" +
-          "around 1400 calories a day, 10-\n" +
-          "minutes of cardio per workout\n" +
-          "session...",
-      },
-      {
-        id: "m15",
-        role: "bot",
-        text: "Go to the Fitness Dashboard to see\nyour detailed fitness plan!",
-      },
-      {
-        id: "m16",
-        role: "user",
-        text:
-          "I can only workout 3 times a week,\n" +
-          "and I don't like using the Smith\n" +
-          "Machine, change my plan to\n" +
-          "accommodate that.",
-      },
-      {
-        id: "m17",
-        role: "bot",
-        text:
-          "Sure thing! I've updated your plan\n" +
-          "to do barbell squats instead and\n" +
-          "split your workouts across 3 days\n" +
-          "instead of 4. Check your fitness\n" +
-          "dashboard to see the updates!",
       },
     ],
     []
@@ -86,6 +35,20 @@ export default function ChatBotScreen({ route }) {
 
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const normalizeBotText = (raw) => {
+    if (!raw) return "";
+    let text = String(raw);
+    // Normalise newlines
+    text = text.replace(/\r\n/g, "\n");
+    // Strip bold markdown markers **text**
+    text = text.replace(/\*\*(.*?)\*\*/g, "$1");
+    // Convert bullet markdown (* or -) at line start to a nicer bullet
+    text = text.replace(/^[\s]*[-*]\s+/gm, "• ");
+    return text.trim();
+  };
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
@@ -124,7 +87,7 @@ export default function ChatBotScreen({ route }) {
     );
   };
 
-  const sendText = (text) => {
+  const sendText = async (text) => {
     const trimmed = String(text ?? "").trim();
     if (!trimmed) return;
 
@@ -132,15 +95,58 @@ export default function ChatBotScreen({ route }) {
     setMessages((prev) => [...prev, userMsg]);
     scrollToBottom();
 
-    setTimeout(() => {
+    setLoading(true);
+    setError("");
+
+    try {
+      // Build conversation history for the backend (map our roles to user/assistant)
+      const history = [...messages, userMsg]
+        .filter((m) => !m.kind) // skip static headline if needed
+        .map((m) => ({
+          role: m.role === "bot" ? "assistant" : "user",
+          content: m.text,
+        }));
+
+      const result = await chatAPI.sendChatbotMessage(trimmed, history, {});
+
+      if (!result.success) {
+        setError(result.error || "Failed to reach chatbot service.");
+        // Fallback to local mock reply so the UI is not dead
+        const fallback = {
+          id: `b_${Date.now()}`,
+          role: "bot",
+          text: buildMockBotReply(trimmed),
+        };
+        setMessages((prev) => [...prev, fallback]);
+        scrollToBottom();
+        return;
+      }
+
+      const responseText =
+        result.data?.response ||
+        result.data?.data?.response ||
+        result.data?.data ||
+        buildMockBotReply(trimmed);
+
       const botMsg = {
         id: `b_${Date.now()}`,
         role: "bot",
-        text: buildMockBotReply(trimmed),
+        text: normalizeBotText(responseText),
       };
       setMessages((prev) => [...prev, botMsg]);
       scrollToBottom();
-    }, 450);
+    } catch (e) {
+      setError("Something went wrong talking to the chatbot. Using a local reply.");
+      const botMsg = {
+        id: `b_${Date.now()}`,
+        role: "bot",
+        text: normalizeBotText(buildMockBotReply(trimmed)),
+      };
+      setMessages((prev) => [...prev, botMsg]);
+      scrollToBottom();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const lastQRef = useRef(null);
@@ -162,7 +168,7 @@ export default function ChatBotScreen({ route }) {
     const trimmed = input.trim();
     if (!trimmed) return;
     setInput("");
-    sendText(trimmed);
+    void sendText(trimmed);
   };
 
   const renderItem = ({ item }) => {
@@ -203,6 +209,8 @@ export default function ChatBotScreen({ route }) {
               <MenuDropdown />
             </View>
 
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
             <FlatList
               ref={listRef}
               data={messages}
@@ -225,7 +233,11 @@ export default function ChatBotScreen({ route }) {
                   onSubmitEditing={handleSend}
                 />
                 <Pressable onPress={handleSend} style={styles.sendBtn}>
-                  <Ionicons name="arrow-up" size={18} color="#fff" />
+                  <Ionicons
+                    name={loading ? "hourglass" : "arrow-up"}
+                    size={18}
+                    color="#fff"
+                  />
                 </Pressable>
               </View>
             </View>
@@ -260,6 +272,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 6,
     paddingBottom: 10,
+  },
+
+  errorText: {
+    color: "#fecaca",
+    fontSize: 12,
+    marginHorizontal: 6,
+    marginBottom: 4,
   },
   screenTitle: {
     color: "rgba(255,255,255,0.8)",

@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
@@ -58,13 +57,8 @@ export default function LoginScreen({ navigation }) {
       setLoading(false);
 
       if (result.success) {
-        setErrorMessage(''); // Clear errors on success
-        Alert.alert('Success', 'Login successful!', [
-          {
-            text: 'OK',
-            onPress: () => navigation.replace('Dashboard'),
-          },
-        ]);
+        setErrorMessage(''); 
+        navigation.replace('Dashboard');
       } else {
         // Display user-friendly error messages
         let errorMsg = result.error || 'Sign in failed. Please try again.';
