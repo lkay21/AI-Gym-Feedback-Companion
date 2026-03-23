@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Update this to your Flask backend URL
 // For iOS Simulator: 'http://localhost:5001'
@@ -118,22 +119,43 @@ export const chatAPI = {
 export default { request: apiRequest };
 
 export const cvAPI = {
-  analyzeVideo: async ({ uri, exercise, userId }) => {
+  analyzeVideo: async ({ uri, exercise, userId, fileName = "upload.mp4", mimeType = "video/mp4" }) => {
     const formData = new FormData();
-    formData.append("exercise", exercise);
+    formData.append("exercise", String(exercise || "").trim());
     formData.append("user_id", String(userId));
-    formData.append("video", {
-      uri,
-      name: "upload.mp4",
-      type: "video/mp4",
-    });
+
+    if (Platform.OS === "web") {
+      const blobResponse = await fetch(uri);
+      const blob = await blobResponse.blob();
+      formData.append("video", blob, fileName);
+    } else {
+      formData.append("video", {
+        uri,
+        name: fileName,
+        type: mimeType,
+      });
+    }
 
     const res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
       method: "POST",
       body: formData,
       // do NOT set Content-Type manually for multipart in RN
     });
-    const data = await res.json();
-    return res.ok ? { success: true, data } : { success: false, error: data.error };
+
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (res.ok) {
+      return { success: true, data: data || {} };
+    }
+
+    return {
+      success: false,
+      error: data?.error || `CV analyze failed with status ${res.status}`,
+    };
   },
 };

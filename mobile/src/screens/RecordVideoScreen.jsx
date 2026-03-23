@@ -1,15 +1,44 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as DocumentPicker from "expo-document-picker";
 import { useEffect, useState } from "react";
 import { Alert, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { cvAPI } from "../services/api";
 
 export default function RecordVideoScreen({ navigation, route }) {
   const selectedExercise = route?.params?.selectedExercise ?? null;
+  const selectedExerciseKey = route?.params?.selectedExerciseKey ?? null;
   const recordedVideoUri = route?.params?.recordedVideoUri ?? route?.params?.videoUri ?? null;
   const [userId, setUserId] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [videoFile, setVideoFile] = useState(() => (
+    recordedVideoUri
+      ? {
+          uri: recordedVideoUri,
+          name: "upload.mp4",
+          mimeType: "video/mp4",
+        }
+      : null
+  ));
+
+  useEffect(() => {
+    if (!recordedVideoUri) {
+      return;
+    }
+
+    setVideoFile((prev) => {
+      if (prev?.uri === recordedVideoUri) {
+        return prev;
+      }
+
+      return {
+        uri: recordedVideoUri,
+        name: "upload.mp4",
+        mimeType: "video/mp4",
+      };
+    });
+  }, [recordedVideoUri]);
 
   useEffect(() => {
     let isMounted = true;
@@ -28,13 +57,50 @@ export default function RecordVideoScreen({ navigation, route }) {
     };
   }, []);
 
-  const onUpload = async () => {
+  const resolveExerciseKey = () => {
+    if (selectedExerciseKey) {
+      return selectedExerciseKey;
+    }
+
     if (!selectedExercise) {
+      return null;
+    }
+
+    return selectedExercise.replace(/\s+/g, "_").toLowerCase();
+  };
+
+  const pickVideoFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "video/*",
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      setVideoFile({
+        uri: asset.uri,
+        name: asset.name || "upload.mp4",
+        mimeType: asset.mimeType || "video/mp4",
+      });
+    } catch (error) {
+      Alert.alert("Picker failed", error?.message || "Unable to select video file.");
+    }
+  };
+
+  const onUpload = async () => {
+    const exerciseKey = resolveExerciseKey();
+
+    if (!exerciseKey) {
       navigation.navigate("ExerciseSelect");
       return;
     }
 
-    if (!recordedVideoUri) {
+    if (!videoFile?.uri) {
       Alert.alert("Video missing", "Pick or record a video before uploading.");
       return;
     }
@@ -48,8 +114,10 @@ export default function RecordVideoScreen({ navigation, route }) {
 
     try {
       const result = await cvAPI.analyzeVideo({
-        uri: recordedVideoUri,
-        exercise: selectedExercise,
+        uri: videoFile.uri,
+        fileName: videoFile.name,
+        mimeType: videoFile.mimeType,
+        exercise: exerciseKey,
         userId,
       });
 
@@ -61,7 +129,9 @@ export default function RecordVideoScreen({ navigation, route }) {
       navigation.navigate("Dashboard", {
         cvResult: {
           score: result.data.form_score ?? result.data.score ?? null,
+          insight: result.data.insight ?? result.data.feedback ?? result.data.result ?? "Analysis complete.",
           feedback: result.data.feedback ?? result.data.result ?? "Analysis complete.",
+          exercise: selectedExercise ?? exerciseKey,
         },
       });
     } finally {
@@ -95,7 +165,7 @@ export default function RecordVideoScreen({ navigation, route }) {
           </Pressable>
 
           <View style={styles.cardHeader}>
-            <Text style={styles.title}>Record a Video</Text>
+            <Text style={styles.title}>Upload a Video</Text>
             <Ionicons
               name="videocam-outline"
               size={22}
@@ -104,15 +174,14 @@ export default function RecordVideoScreen({ navigation, route }) {
           </View>
 
           <Text style={styles.subtitle}>
-            Click Start to begin recording! Click Stop to end{"\n"}
-            the recording!
+            Pick your exercise video file and upload it for CV form scoring.
           </Text>
 
           <Text style={styles.metaLine}>
             Exercise: {selectedExercise ?? "Not selected"}
           </Text>
           <Text style={styles.metaLine}>
-            Video: {recordedVideoUri ? "Ready" : "Missing (pass video URI in route params)"}
+            Video: {videoFile?.name ? videoFile.name : "No file selected"}
           </Text>
 
           <View style={styles.previewFrame}>
@@ -135,13 +204,13 @@ export default function RecordVideoScreen({ navigation, route }) {
           </View>
 
           <View style={styles.btnRow}>
-            <Pressable style={styles.pillBtn} onPress={() => {}}>
-              <Text style={styles.pillBtnText}>Re-record Video</Text>
+            <Pressable style={styles.pillBtn} onPress={pickVideoFile}>
+              <Text style={styles.pillBtnText}>Choose Video</Text>
             </Pressable>
 
             <Pressable
               style={styles.pillBtn}
-              disabled={isUploading}
+              disabled={isUploading || !videoFile?.uri}
               onPress={handleUpload}
             >
               <Text style={styles.pillBtnText}>{isUploading ? "Uploading..." : "Upload Video"}</Text>

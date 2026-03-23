@@ -1,7 +1,8 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Image,
@@ -26,8 +27,55 @@ const WEEKLY_PLAN = [
   { day: "Friday", text: "Abs, Cardio" },
 ];
 
-export default function DashboardScreen({ navigation }) {
+const DEFAULT_CV_RESULT = {
+  score: null,
+  insight: "Upload a video to receive form insights.",
+  exercise: "",
+};
+
+export default function DashboardScreen({ navigation, route }) {
   const [prompt, setPrompt] = useState("");
+  const [cvResult, setCvResult] = useState(DEFAULT_CV_RESULT);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadStoredCVResult = async () => {
+      try {
+        const raw = await AsyncStorage.getItem("lastCVResult");
+        if (!raw || !isMounted) {
+          return;
+        }
+
+        const parsed = JSON.parse(raw);
+        setCvResult((prev) => ({ ...prev, ...parsed }));
+      } catch {
+        // Ignore cache parse errors and keep defaults.
+      }
+    };
+
+    loadStoredCVResult();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const incoming = route?.params?.cvResult;
+    if (!incoming) {
+      return;
+    }
+
+    const normalized = {
+      score: incoming.score ?? null,
+      insight: incoming.insight ?? incoming.feedback ?? "Analysis complete.",
+      exercise: incoming.exercise ?? "",
+    };
+
+    setCvResult((prev) => ({ ...prev, ...normalized }));
+    AsyncStorage.setItem("lastCVResult", JSON.stringify(normalized)).catch(() => {});
+  }, [route?.params?.cvResult]);
 
   const onSend = () => {
     const t = prompt.trim();
@@ -125,14 +173,14 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.btnRow}>
                   <Pressable
                     style={styles.pillBtn}
-                    onPress={() => navigation.navigate("RecordVideo")}
+                    onPress={() => navigation.navigate("ExerciseSelect")}
                   >
                     <Text style={styles.pillBtnText}>Record Video</Text>
                   </Pressable>
 
                   <Pressable
                     style={styles.pillBtn}
-                    onPress={() => navigation.navigate("RecordVideo")}
+                    onPress={() => navigation.navigate("ExerciseSelect")}
                   >
                     <Text style={styles.pillBtnText}>Upload Video</Text>
                   </Pressable>
@@ -141,11 +189,15 @@ export default function DashboardScreen({ navigation }) {
                 <View style={{ height: 10 }} />
 
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Form Score:</Text> 7.8
+                  <Text style={styles.metaLabel}>Form Score:</Text>{" "}
+                  {cvResult.score === null ? "N/A" : `${Number(cvResult.score).toFixed(2)} / 100`}
                 </Text>
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Feedback:</Text> Keep your back
-                  straight and your arm{"\n"}at a 90 degree angle!
+                  <Text style={styles.metaLabel}>Exercise:</Text>{" "}
+                  {cvResult.exercise || "Not set"}
+                </Text>
+                <Text style={styles.metaText}>
+                  <Text style={styles.metaLabel}>Insight:</Text> {cvResult.insight}
                 </Text>
               </View>
 
