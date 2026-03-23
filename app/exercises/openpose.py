@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 import numpy as np
 
 #CHANGE THIS FOR DEMO
-from . import exercise as ex
-
+# from . import exercise as ex
+import exercise as ex
 
 import time
 import mediapipe as mp
