@@ -13,18 +13,16 @@ from scipy.interpolate import interp1d
 import subprocess
 from google import genai
 import os
-from moviepy.editor import VideoFileClip
-from pymediainfo import MediaInfo
 
-# try:
-#     VideoFileClip = importlib.import_module("moviepy").VideoFileClip
-# except Exception:
-#     VideoFileClip = None
+try:
+    from moviepy.editor import VideoFileClip
+except Exception:
+    VideoFileClip = None
 
-# try:
-#     MediaInfo = importlib.import_module("pymediainfo").MediaInfo
-# except Exception:
-#     MediaInfo = None
+try:
+    from pymediainfo import MediaInfo
+except Exception:
+    MediaInfo = None
 
 load_dotenv()
     
