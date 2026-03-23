@@ -43,6 +43,7 @@ node_modules/
 web-build/
 npm-debug.*
 *.tsbuildinfo
+app/mobile/package-lock.json
 
 # OS
 .DS_Store
