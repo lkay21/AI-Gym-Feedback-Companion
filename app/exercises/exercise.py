@@ -19,7 +19,6 @@ POSE_PAIRS = [ ["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElb
                ["Neck", "Nose"], ["Nose", "REye"], ["REye", "REar"],
                ["Nose", "LEye"], ["LEye", "LEar"] ]
 
-
 # Presets of ALL exercises within scope
 # Plan to map correctly by using same exercise variable names in frontend that can be passed
 # to backend and then therefore used correctly in object instantiation
@@ -61,6 +60,46 @@ EXERCISE_PRESETS = {
     },
     "lat_pulldown": {
         "name": "Lat Pulldown",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
+    "iso_left_front_raise": {
+        "name": "Left Front Raise",
+        "isolated_movement": True,
+        "joint_group": ["LShoulder", "LElbow", "LWrist"]
+    },
+    "iso_right_front_raise": {
+        "name": "Right Front Raise",
+        "isolated_movement": True,
+        "joint_group": ["RShoulder", "RElbow", "RWrist"]
+    },
+    "front_raise":{
+        "name": "Front Raise",
+        "isolated_movement": True,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
+    "close_grip_pulldown" :{
+        "name": "Close Grip Pulldown",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
+    "iso_left_overhead_extension": {
+        "name": "Left Overhead Extension",
+        "isolated_movement": True,
+        "joint_group": ["LShoulder", "LElbow", "LWrist"]
+    },
+    "iso_right_overhead_extension": {
+        "name": "Right Overhead Extension",
+        "isolated_movement": True,
+        "joint_group": ["RShoulder", "RElbow", "RWrist"]
+    },
+    "pushdown" : {
+        "name": "Pushdown",
+        "isolated_movement": False,
+        "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
+    },
+    "overhead_extension" : {
+        "name": "Overhead Extension",
         "isolated_movement": False,
         "joint_group": ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"]
     }

@@ -6,6 +6,7 @@ import ast
 import importlib
 from dotenv import load_dotenv
 import numpy as np
+# import exercise as ex
 from . import exercise as ex
 import time
 from sklearn.metrics import root_mean_squared_error
@@ -13,16 +14,18 @@ from scipy.interpolate import interp1d
 import subprocess
 from google import genai
 import os
+from moviepy.editor import VideoFileClip
+from pymediainfo import MediaInfo
 
-try:
-    from moviepy.editor import VideoFileClip
-except Exception:
-    VideoFileClip = None
+# try:
+#     VideoFileClip = importlib.import_module("moviepy").VideoFileClip
+# except Exception:
+#     VideoFileClip = None
 
-try:
-    from pymediainfo import MediaInfo
-except Exception:
-    MediaInfo = None
+# try:
+#     MediaInfo = importlib.import_module("pymediainfo").MediaInfo
+# except Exception:
+#     MediaInfo = None
 
 load_dotenv()
     
@@ -57,7 +60,7 @@ POSE_PAIRS = [ ["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElb
                ["Neck", "Nose"], ["Nose", "REye"], ["REye", "REar"],
                ["Nose", "LEye"], ["LEye", "LEar"] ]
 
-EXERCISES = ["bicep_curl", "lateral_raise", "shoulder_press"]
+EXERCISES = ["bicep_curl", "lateral_raise", "shoulder_press", "iso_left_front_raise"]
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(APP_DIR)
@@ -109,7 +112,7 @@ def generate_pose(file_path, joint_group, frame_vals, aws_upload):
 
     # load the pre-trained model
     net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
-    thres = 0.15
+    thres = 0.10
 
     # read the video file and use opencv to gather width, height, fps
     cap = cv.VideoCapture(file_path)
@@ -451,7 +454,8 @@ def get_standard_pose(example_path, exercise, aws_upload=False):
     print(f"\nProcessing standard pose data for Exercise")
     print(f"Exercise Name: {exercise}")
 
-    exercise_obj = ex.Exercise.from_preset(exercise)
+    exercise_key = exercise.replace(" ", "_").lower()
+    exercise_obj = ex.Exercise.from_preset(exercise_key)
 
     example_vid = os.path.join(APP_DIR, "video_in", example_path)
 
@@ -477,8 +481,7 @@ def get_standard_pose(example_path, exercise, aws_upload=False):
     exercise_obj.set_frame_values(frame_vals, frame_count, fps, frame_width, frame_height)
     # exercise_obj.graph_metrics()
 
-    folder_name = f"{exercise_obj.name}"
-    folder_name = folder_name.replace(" ", "_").lower()
+    folder_name = exercise_key
     output_path = os.path.join(APP_DATA_DIR, folder_name)
 
     if os.path.exists(output_path):
@@ -486,7 +489,7 @@ def get_standard_pose(example_path, exercise, aws_upload=False):
     
     os.makedirs(output_path)
 
-    file_name = f"{exercise_obj.name}_video_params".replace(" ", "_").lower()
+    file_name = f"{exercise_key}_video_params"
     file_output_path = os.path.join(output_path, file_name + ".txt")
 
     with open(file_output_path, 'w') as f:
@@ -499,7 +502,7 @@ def get_standard_pose(example_path, exercise, aws_upload=False):
     print(f"\n gathering standard pose data for joints: {exercise_obj.joint_group}\n")
     for joint in frame_vals.keys():
 
-        file_name = f"{exercise_obj.name}_{joint}".replace(" ", "_").lower()
+        file_name = f"{exercise_key}_{joint}".replace(" ", "_").lower()
         file_output_path = os.path.join(output_path, file_name + ".txt")
 
         with open(file_output_path, 'w') as f:
@@ -518,8 +521,38 @@ if __name__ == "__main__":
     # rename_vid = "rename.mp4"
     # rename_vid_2 = "lat_raise_bad.mp4"
 
-    exercise_str = "shoulder_press"
-    example_vid = "shoulder_press.mov"
+    # exercise_str = "shoulder_press"
+    # example_vid = "shoulder_press.mov"
+
+    train_exercises = ['bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press'
+                ]
+    train_vids = [
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV'
+           ]
+    
+    test_exercises = ["lateral_raise", "lateral_raise", "bicep_curl"]
+    test_vids = ["lat_raise_good.mp4", "lat_raise_bad.mp4", "rename.mp4"]
+    
+    assert len(train_exercises) == len(train_vids), "Mismatch between exercises and video files"
+    assert len(test_exercises) == len(test_vids), "Mismatch between exercises and video files"
+
+    # if test == 0, training
+    test = 0
+
+    if not(test):
+        for exercise, vid in zip(train_exercises, train_vids):
+            get_standard_pose(vid, exercise)
+    else:
+        for exercise, vid in zip(test_exercises, test_vids):
+            overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(vid, exercise)
+            print(f"Overall Score: {overall_score}")
+            print(f"\nFeedback for {exercise}:\n")
+            print(out_string)
+
 
     # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
     # exercises = ["hammer_curl", "shoulder_press", "bent_over_row", "lat_pulldown"]
@@ -547,7 +580,7 @@ if __name__ == "__main__":
 
     # fetch_standard_data("RWrist", "x", exercise_str)
 
-    get_standard_pose(example_vid, exercise_str)
+    # get_standard_pose(example_vid, exercise_str)
 
     # left_bicep_curl = exercise.Exercise.from_preset("iso_left_bicep_curl")
     # bicep_curl = exercise.Exercise.from_preset("bicep_curl")
