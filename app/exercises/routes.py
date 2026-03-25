@@ -1,11 +1,12 @@
 # API routes for handling user video uploads, pose generation, and feedback 
 # new branch
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 import boto3
 from dotenv import load_dotenv
 import os
-from openpose import generate_pose, FormScore, fetch_standard_data, get_standard_pose, user_output
-from exercise import Exercise, EXERCISE_PRESETS
+from werkzeug.utils import secure_filename
+from .openpose import generate_pose, FormScore, fetch_standard_data, get_standard_pose, user_output
+from .exercise import Exercise, EXERCISE_PRESETS
 
 load_dotenv()
 
@@ -30,7 +31,6 @@ exercises_bp = Blueprint('exercises', __name__)
 # 2. Backend retrieves video from S3 bucket and stores it in video_in folder
 # 3. Function processes and both video and pose estimation are in S3 bucket for frontend to retrieve and display
 # 4. Delete video from local folder as any further use will occur through S3
-@exercises_bp.route('/upload_video', methods=['POST'])
 def parse_user_video(video_file, exercise):
 
     # ensure coorect video file type
@@ -42,14 +42,36 @@ def parse_user_video(video_file, exercise):
     with open(input_video_path, 'rb') as vfile:
         s3.upload_fileobj(vfile, bucket_name, video_file_name)
 
-    vfile.close()
-
     # Add to video_in
     # Call formscore with video path and exercise type
     output = user_output(video_file, exercise, aws_upload=True)
     # overall_score, joint_scores = FormScore(video_file, exercise, aws_upload=True)
 
     return output
+
+
+@exercises_bp.route('/analyze', methods=['POST'])
+def analyze_video():
+    video = request.files.get('video')
+    exercise = request.form.get('exercise')
+    user_id = request.form.get('user_id')
+
+    if not video or not exercise:
+        return jsonify({'error': 'video and exercise are required'}), 400
+
+    os.makedirs('video_in', exist_ok=True)
+    filename = secure_filename(video.filename or 'upload.mp4')
+    local_path = os.path.join('video_in', filename)
+    video.save(local_path)
+
+    output = parse_user_video(filename, exercise)
+
+    if isinstance(output, dict):
+        output['user_id'] = user_id
+        output['exercise'] = exercise
+        return jsonify(output), 200
+
+    return jsonify({'result': output, 'user_id': user_id, 'exercise': exercise}), 200
 
 # given exercise and standard video, update standard data for exercise
 @exercises_bp.route('/update_standard_data', methods=['POST'])

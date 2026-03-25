@@ -12,6 +12,7 @@ from app.fitness.benchmark_loader import load_fitness_benchmarks
 from app.chatbot.ai_recommendations import get_ai_recommendation
 from app.logger import get_logger
 from app.database.models import UserProfile
+from app.exercises.routes import exercises_bp
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -71,6 +72,8 @@ def create_app():
     app.register_blueprint(chat_module_bp, url_prefix='/api/chat')
     # Register profile blueprint
     app.register_blueprint(profile_bp)
+    # Register CV/exercise blueprint
+    app.register_blueprint(exercises_bp, url_prefix='/api/cv')
 
     # Load fitness benchmarks on startup for integration verification
     try:
@@ -132,6 +135,7 @@ def main():
     app = create_app()
     with app.app_context():
         db.create_all()
+    
     app.run(debug=True, port=5001)
     
 

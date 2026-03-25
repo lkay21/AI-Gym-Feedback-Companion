@@ -1,8 +1,147 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as DocumentPicker from "expo-document-picker";
+import { useEffect, useState } from "react";
+import { Alert, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { cvAPI } from "../services/api";
 
-export default function RecordVideoScreen({ navigation }) {
+export default function RecordVideoScreen({ navigation, route }) {
+  const selectedExercise = route?.params?.selectedExercise ?? null;
+  const selectedExerciseKey = route?.params?.selectedExerciseKey ?? null;
+  const recordedVideoUri = route?.params?.recordedVideoUri ?? route?.params?.videoUri ?? null;
+  const [userId, setUserId] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [videoFile, setVideoFile] = useState(() => (
+    recordedVideoUri
+      ? {
+          uri: recordedVideoUri,
+          name: "upload.mp4",
+          mimeType: "video/mp4",
+        }
+      : null
+  ));
+
+  useEffect(() => {
+    if (!recordedVideoUri) {
+      return;
+    }
+
+    setVideoFile((prev) => {
+      if (prev?.uri === recordedVideoUri) {
+        return prev;
+      }
+
+      return {
+        uri: recordedVideoUri,
+        name: "upload.mp4",
+        mimeType: "video/mp4",
+      };
+    });
+  }, [recordedVideoUri]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem("userId");
+      if (isMounted) {
+        setUserId(storedUserId);
+      }
+    };
+
+    loadUserId();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const resolveExerciseKey = () => {
+    if (selectedExerciseKey) {
+      return selectedExerciseKey;
+    }
+
+    if (!selectedExercise) {
+      return null;
+    }
+
+    return selectedExercise.replace(/\s+/g, "_").toLowerCase();
+  };
+
+  const pickVideoFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "video/*",
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      setVideoFile({
+        uri: asset.uri,
+        name: asset.name || "upload.mp4",
+        mimeType: asset.mimeType || "video/mp4",
+      });
+    } catch (error) {
+      Alert.alert("Picker failed", error?.message || "Unable to select video file.");
+    }
+  };
+
+  const onUpload = async () => {
+    const exerciseKey = resolveExerciseKey();
+
+    if (!exerciseKey) {
+      navigation.navigate("ExerciseSelect");
+      return;
+    }
+
+    if (!videoFile?.uri) {
+      Alert.alert("Video missing", "Pick or record a video before uploading.");
+      return;
+    }
+
+    if (!userId) {
+      Alert.alert("User missing", "Please log in again before uploading a video.");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const result = await cvAPI.analyzeVideo({
+        uri: videoFile.uri,
+        fileName: videoFile.name,
+        mimeType: videoFile.mimeType,
+        exercise: exerciseKey,
+        userId,
+      });
+
+      if (!result.success) {
+        Alert.alert("Upload failed", result.error || "Unable to analyze video.");
+        return;
+      }
+
+      navigation.navigate("Dashboard", {
+        cvResult: {
+          score: result.data.form_score ?? result.data.score ?? null,
+          insight: result.data.insight ?? result.data.feedback ?? result.data.result ?? "Analysis complete.",
+          feedback: result.data.feedback ?? result.data.result ?? "Analysis complete.",
+          exercise: selectedExercise ?? exerciseKey,
+        },
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleUpload = () => {
+    onUpload();
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -26,7 +165,7 @@ export default function RecordVideoScreen({ navigation }) {
           </Pressable>
 
           <View style={styles.cardHeader}>
-            <Text style={styles.title}>Record a Video</Text>
+            <Text style={styles.title}>Upload a Video</Text>
             <Ionicons
               name="videocam-outline"
               size={22}
@@ -35,8 +174,14 @@ export default function RecordVideoScreen({ navigation }) {
           </View>
 
           <Text style={styles.subtitle}>
-            Click Start to begin recording! Click Stop to end{"\n"}
-            the recording!
+            Pick your exercise video file and upload it for CV form scoring.
+          </Text>
+
+          <Text style={styles.metaLine}>
+            Exercise: {selectedExercise ?? "Not selected"}
+          </Text>
+          <Text style={styles.metaLine}>
+            Video: {videoFile?.name ? videoFile.name : "No file selected"}
           </Text>
 
           <View style={styles.previewFrame}>
@@ -59,15 +204,16 @@ export default function RecordVideoScreen({ navigation }) {
           </View>
 
           <View style={styles.btnRow}>
-            <Pressable style={styles.pillBtn} onPress={() => {}}>
-              <Text style={styles.pillBtnText}>Re-record Video</Text>
+            <Pressable style={styles.pillBtn} onPress={pickVideoFile}>
+              <Text style={styles.pillBtnText}>Choose Video</Text>
             </Pressable>
 
             <Pressable
               style={styles.pillBtn}
-              onPress={() => navigation.navigate("ExerciseSelect")}
+              disabled={isUploading || !videoFile?.uri}
+              onPress={handleUpload}
             >
-              <Text style={styles.pillBtnText}>Upload Video</Text>
+              <Text style={styles.pillBtnText}>{isUploading ? "Uploading..." : "Upload Video"}</Text>
             </Pressable>
           </View>
         </View>
@@ -128,6 +274,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 12,
     lineHeight: 15,
+  },
+  metaLine: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 6,
   },
 
   previewFrame: {
