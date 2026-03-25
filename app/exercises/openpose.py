@@ -2,16 +2,27 @@ import shutil
 import boto3
 import cv2 as cv
 import os
+import ast
+import importlib
 from dotenv import load_dotenv
 import numpy as np
 from . import exercise as ex
 import time
-import mediapipe as mp
 from sklearn.metrics import root_mean_squared_error
 from scipy.interpolate import interp1d
 import subprocess
 from google import genai
 import os
+
+try:
+    from moviepy.editor import VideoFileClip
+except Exception:
+    VideoFileClip = None
+
+try:
+    from pymediainfo import MediaInfo
+except Exception:
+    MediaInfo = None
 
 load_dotenv()
     
@@ -46,7 +57,7 @@ POSE_PAIRS = [ ["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElb
                ["Neck", "Nose"], ["Nose", "REye"], ["REye", "REar"],
                ["Nose", "LEye"], ["LEye", "LEar"] ]
 
-EXERCISES = ["bicep_curl", "lateral_raise"]
+EXERCISES = ["bicep_curl", "lateral_raise", "shoulder_press"]
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(APP_DIR)
@@ -55,7 +66,46 @@ APP_DATA_DIR = os.path.join(APP_DIR, "exercise_data")
 # proto_file = "./app/models/pose_deploy.prototxt"
 # weights_file = "./app/models/pose_iter_440000.caffemodel"
 
+
+def mov_to_mp4(video_path, output):
+    try:
+        clip = VideoFileClip(video_path)
+        clip.write_videofile(output, codec='libx264')
+        clip.close()
+    except Exception as e:
+        print(f"Error converting video: {e}")
+        raise ValueError("Error converting video to mp4 format.") from e
+
+    return output
+
+
+def video_robustness_check(video_path):
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"Input video not found at: {video_path}")
+
+    # Check container format and convert to MP4 when possible.
+    if MediaInfo is not None:
+        media_info = MediaInfo.parse(video_path)
+
+        if media_info.general_tracks:
+            container_format = media_info.general_tracks[0].format or ""
+            if not ("MPEG-4" in container_format or "MP4" in container_format):
+                output_path = video_path.rsplit('.', 1)[0] + ".mp4"
+                video_path = mov_to_mp4(video_path, output_path)
+            else:
+                print(f"Video format is acceptable: {container_format}")
+
+    cap = cv.VideoCapture(video_path)
+    if not cap.isOpened():
+        cap.release()
+        raise ValueError("Error: Could not open video file.")
+
+
+    return video_path
+
 def generate_pose(file_path, joint_group, frame_vals, aws_upload):
+
+    file_path = video_robustness_check(file_path)
 
     # load the pre-trained model
     net = cv.dnn.readNetFromTensorflow(os.path.join(APP_DIR, "models", "graph_opt.pb"))
@@ -63,29 +113,42 @@ def generate_pose(file_path, joint_group, frame_vals, aws_upload):
 
     # read the video file and use opencv to gather width, height, fps
     cap = cv.VideoCapture(file_path)
+    if not cap.isOpened():
+        raise RuntimeError(f"Could not open input video: {file_path}")
+
     frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv.CAP_PROP_FPS)
     print(f"Video properties - Width: {frame_width}, Height: {frame_height}, FPS: {fps}")
 
     # define the codec and create video writer object (format)
-    fourcc = cv.VideoWriter_fourcc(*'avc1')
+    fourcc = cv.VideoWriter_fourcc(*'mp4v')
 
     # directory to save output video and create output video writer (actual video work)
 
     # TODO: need to update output path to S3 compatible path and add S3 upload functionality after video is written locally
-    output_path = os.path.join(APP_DIR, 'video_out', os.path.basename(file_path))
+    output_dir = os.path.join(APP_DIR, 'video_out')
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, os.path.basename(file_path))
     # output_path = os.path.join('static', 'pose_videos', os.path.basename(file_path))
 
     print(f"Output video will be saved to: {output_path}")
     out = cv.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
     if not out.isOpened():
-        print("Error: Could not open video writer.")
-        return
+        cap.release()
+        raise RuntimeError(f"Could not open video writer for output: {output_path}")
 
     # read the first two frames, ret is bool if frame read and frame is frame properties
     ret, frame_1 = cap.read()
+    if not ret or frame_1 is None:
+        cap.release()
+        out.release()
+        cv.destroyAllWindows()
+        raise RuntimeError(f"Unable to read first frame from input video: {file_path}")
+
     ret, frame_2 = cap.read()
+    if not ret or frame_2 is None:
+        frame_2 = frame_1.copy()
 
     frame_count = 0
     # loop through video frames
@@ -332,7 +395,8 @@ def FormScore(user_path, exercise, aws_upload=False):
 def user_output(user_path, exercise, aws_upload=False):
 
     overall_score, joint_scores, context_dict, user_data, standard_data = FormScore(user_path, exercise, aws_upload)
-    out_string = f"\nFeedback:\n"
+    out_string = ""
+    out_string_sections = ['went_well', 'needs_improvement', 'fix_next_time']
 
     llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
                  f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
@@ -344,6 +408,14 @@ def user_output(user_path, exercise, aws_upload=False):
                  f"Insights: {context_dict}\n"\
                  f"User Joint Data: {user_data}\n"\
                  f"Standard Joint Data: {standard_data}\n"\
+                 f"Here are the rules for your output. You DO NOT output any score metrics given to you in context."\
+                 f"You CAN use the scores given in context to give feedback on specific joints."\
+                 f"Your response should be a combination of what went well, what went poorly, and what to do next time for fixing."\
+                 f"Those three categories shoudl each take ONLY take two bullet points each under the given header sections."\
+                 f"Your response should be understandable to any level of lifter (including a beginner with no term knowledge), it should be technical but not too technical that it cannot be understood."\
+                 f"AND finally, there should be no formatting the text (italics, bold etc.)."\
+                 f"Your response should be in the EXACT following format, enclosed in curly braces, without any additional text: "\
+                 f"'went_well': ['bullet point 1', 'bullet point 2'], 'needs_improvement': ['bullet point 1', 'bullet point 2'], 'fix_next_time': ['bullet point 1', 'bullet point 2 ']"
                  
     client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -354,16 +426,22 @@ def user_output(user_path, exercise, aws_upload=False):
 
 
     if overall_score >= 0.9:
-        out_string += "     Great job! Your form looks good overall."
+        out_string += "Great job! Your form looks good overall.\n"
     elif overall_score >= 0.8:
-        out_string += "     Not bad form! However, there are some areas for improvement in your form."
+        out_string += "Good form! However, there are some areas for improvement in your form.\n"
     else:
-        out_string += "     Your form needs work. Focus on improving your technique for better results and injury prevention."
+        out_string += "Your form needs work. Focus on improving your technique for better results and injury prevention.\n"
 
 
-    out_string += response.text
+    llm_sections = ast.literal_eval(response.text)
+    for string in out_string_sections:
+        out_string += f"\n{string.replace('_', ' ').title()}:\n"
+        for bullet in llm_sections[string]:
+            out_string += f"- {bullet}\n"
 
-    return out_string
+    # out_string += response.text
+
+    return overall_score, joint_scores, context_dict, user_data, standard_data, out_string
 
 # takes in example video for input exercise to get "standard" data for each joing in define joint group for that exercise
 # data gets saved to ./exercise_data 
@@ -433,12 +511,15 @@ def get_standard_pose(example_path, exercise, aws_upload=False):
 
 if __name__ == "__main__":
 
-    exercise_str = "bicep_curl"
-    exercise_str_2 = "lateral_raise"
-    example_vid = "example.mp4"
-    example_vid_2 = "lat_raise_stand.mp4"
-    rename_vid = "rename.mp4"
-    rename_vid_2 = "lat_raise_bad.mp4"
+    # exercise_str = "bicep_curl"
+    # # exercise_str_2 = "lateral_raise"
+    # example_vid = "example.mp4"
+    # example_vid_2 = "lat_raise_stand.mp4"
+    # rename_vid = "rename.mp4"
+    # rename_vid_2 = "lat_raise_bad.mp4"
+
+    exercise_str = "shoulder_press"
+    example_vid = "shoulder_press.mov"
 
     # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
     # exercises = ["hammer_curl", "shoulder_press", "bent_over_row", "lat_pulldown"]
@@ -450,8 +531,8 @@ if __name__ == "__main__":
     # get_standard_pose(example_vid, exercise_str)
     # get_standard_pose(example_vid_2, exercise_str_2)
 
-    user_out = user_output(rename_vid, exercise_str)
-    print(user_out)
+    # user_out = user_output(rename_vid, exercise_str)
+    # print(user_out)
 
     # overall, joints, context_dict = FormScore(rename_vid, exercise_str)
 
@@ -466,7 +547,7 @@ if __name__ == "__main__":
 
     # fetch_standard_data("RWrist", "x", exercise_str)
 
-    # get_standard_pose(example_vid, exercise_str)
+    get_standard_pose(example_vid, exercise_str)
 
     # left_bicep_curl = exercise.Exercise.from_preset("iso_left_bicep_curl")
     # bicep_curl = exercise.Exercise.from_preset("bicep_curl")

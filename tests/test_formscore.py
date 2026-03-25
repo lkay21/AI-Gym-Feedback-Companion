@@ -39,11 +39,13 @@ class TestS3(unittest.TestCase):
     @patch('builtins.open', mock_open(read_data=b'fake_video_bytes'))
     def test_aws_video_parse(self, mock_s3, mock_user_output):
 
-        mock_user_output.return_value = "Form looks good!"
+        mock_user_output.return_value = (0.85, {"RWrist": 0.9}, {}, {}, {}, "Great form!")
         result = parse_user_video('test.mp4', 'bicep_curl')
         mock_s3.upload_fileobj.assert_called_once_with(ANY, 'fitness-form-videos', 'test.mp4_raw')
         
-        self.assertEqual(result, "Form looks good!")
+        self.assertIsInstance(result, dict)
+        self.assertIn('form_score', result)
+        self.assertEqual(result['form_score'], 85.0)
 
 class TestExerciseClass(unittest.TestCase):
     def test_from_preset_builds_expected_exercise(self):
@@ -81,12 +83,14 @@ class TestExerciseClass(unittest.TestCase):
 
 class TestFormScore(unittest.TestCase):
 
+    @patch('app.exercises.openpose.video_robustness_check')
     @patch('app.exercises.openpose.s3')
     @patch('app.exercises.openpose.cv')
-    def test_generate_pose_video_properties(self, mock_cv, mock_s3):
+    def test_generate_pose_video_properties(self, mock_cv, mock_s3, mock_robustness):
 
         # assert properties returned
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_robustness.return_value = 'fake.mp4'
 
         mock_cap = MagicMock()
         mock_cap.get.side_effect = [640, 480, 30.0]
@@ -112,12 +116,14 @@ class TestFormScore(unittest.TestCase):
         self.assertEqual(fps, 30.0)
         self.assertEqual(frame_count, 1)
 
+    @patch('app.exercises.openpose.video_robustness_check')
     @patch('app.exercises.openpose.s3')
     @patch('app.exercises.openpose.cv')
-    def test_generate_pose_aws_flag_true(self, mock_cv, mock_s3):
+    def test_generate_pose_aws_flag_true(self, mock_cv, mock_s3, mock_robustness):
 
         # assert s3.upload_file is called when aws_upload=True
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_robustness.return_value = 'test.mp4'
 
         mock_cap = MagicMock()
         mock_cap.get.side_effect = [640, 480, 30.0]
@@ -140,12 +146,14 @@ class TestFormScore(unittest.TestCase):
 
         mock_s3.upload_file.assert_called_once()
 
+    @patch('app.exercises.openpose.video_robustness_check')
     @patch('app.exercises.openpose.s3')
     @patch('app.exercises.openpose.cv')
-    def test_generate_pose_aws_flag_false(self, mock_cv, mock_s3):
+    def test_generate_pose_aws_flag_false(self, mock_cv, mock_s3, mock_robustness):
 
         # assert s3.upload_file is NOT called when aws_upload=True
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_robustness.return_value = 'test.mp4'
 
         mock_cap = MagicMock()
         mock_cap.get.side_effect = [640, 480, 30.0]
@@ -221,14 +229,17 @@ class TestFormScore(unittest.TestCase):
     def test_user_output_return(self, mock_formscore, mock_genai):
 
         mock_formscore.return_value = (0.85, {"RWrist": 0.9}, {}, {}, {})
-        mock_genai.return_value = "Not bad form! Keep going!"
-        mock_genai.Client.return_value.models.generate_content.return_value.text = "some feedback text"
+        mock_genai.Client.return_value.models.generate_content.return_value.text = "{'went_well': ['Good form'], 'needs_improvement': ['Work on speed'], 'fix_next_time': ['Use more control']}"
 
+        overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output('test.mp4', 'bicep_curl')
 
-        feedback = user_output('test.mp4', 'bicep_curl')
-
-        self.assertIsInstance(feedback, str)
-        self.assertIn("Not bad form!", feedback)
+        self.assertIsInstance(overall_score, float)
+        self.assertEqual(overall_score, 0.85)
+        self.assertIsInstance(joint_scores, dict)
+        self.assertIsInstance(out_string, str)
+        self.assertIn("Went Well", out_string)
+        self.assertIn("Needs Improvement", out_string)
+        self.assertIn("Fix Next Time", out_string)
 
     
 if __name__ == "__main__":
