@@ -1,4 +1,4 @@
-Frame Count: 173
-FPS: 25.260101621098475
-Frame Width: 318
-Frame Height: 478
+Frame Count: 42
+FPS: 30.641330166270784
+Frame Width: 1080
+Frame Height: 1920

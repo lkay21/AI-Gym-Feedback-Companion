@@ -1,0 +1,4 @@
+Frame Count: 68
+FPS: 30.065359477124183
+Frame Width: 1080
+Frame Height: 1920
