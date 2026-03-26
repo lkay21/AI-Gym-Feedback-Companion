@@ -91,15 +91,19 @@ def video_robustness_check(video_path):
 
     # Check container format and convert to MP4 when possible.
     if MediaInfo is not None:
-        media_info = MediaInfo.parse(video_path)
-
-        if media_info.general_tracks:
-            container_format = media_info.general_tracks[0].format or ""
-            if not ("MPEG-4" in container_format or "MP4" in container_format):
-                output_path = video_path.rsplit('.', 1)[0] + ".mp4"
-                video_path = mov_to_mp4(video_path, output_path)
-            else:
-                print(f"Video format is acceptable: {container_format}")
+        try:
+            media_info = MediaInfo.parse(video_path)
+            if media_info.general_tracks:
+                container_format = media_info.general_tracks[0].format or ""
+                if not ("MPEG-4" in container_format or "MP4" in container_format):
+                    output_path = video_path.rsplit('.', 1)[0] + ".mp4"
+                    video_path = mov_to_mp4(video_path, output_path)
+                else:
+                    print(f"Video format is acceptable: {container_format}")
+        except Exception as e:
+            # pymediainfo requires a native MediaInfo library; if it's missing or
+            # fails to load, we still want OpenCV processing to continue.
+            print(f"[warn] MediaInfo.parse failed ({type(e).__name__}): {e}")
 
     cap = cv.VideoCapture(video_path)
     if not cap.isOpened():
