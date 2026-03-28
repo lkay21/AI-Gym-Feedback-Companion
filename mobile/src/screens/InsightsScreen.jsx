@@ -97,6 +97,7 @@ export default function InsightsScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
             >
               <Text style={styles.title}>Your Insights</Text>
 
@@ -475,9 +476,10 @@ const styles = StyleSheet.create({
 
   // IMPORTANT: give room for the fixed input pill
   scrollContent: {
-    paddingHorizontal: 4,
-    paddingBottom: 18,
-  },
+  flexGrow: 1,
+  paddingHorizontal: 4,
+  paddingBottom: 18,
+},
 
   title: {
     color: "rgba(255,255,255,0.96)",

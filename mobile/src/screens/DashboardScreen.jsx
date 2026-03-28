@@ -1,7 +1,9 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useMemo, useState } from "react";
+
 import {
   Image,
   KeyboardAvoidingView,
@@ -14,18 +16,66 @@ import {
   TextInput,
   View,
 } from "react-native";
+
 import MenuDropdown from "../components/MenuDropdown";
 
-// ---- dummy data (replace later) ----
 const WEEK_RANGE = "12/9/2025 - 12/15/2025";
+
 const WEEKLY_PLAN = [
   { day: "Monday", text: "Biceps, Triceps, Shoulders" },
   { day: "Wednesday", text: "Glutes, Quads" },
   { day: "Friday", text: "Abs, Cardio" },
 ];
 
-export default function DashboardScreen({ navigation }) {
+const DEFAULT_CV_RESULT = {
+  score: null,
+  insight: "Upload a video to receive form insights.",
+  exercise: "",
+};
+
+export default function DashboardScreen({ navigation, route }) {
   const [prompt, setPrompt] = useState("");
+  const [cvResult, setCvResult] = useState(DEFAULT_CV_RESULT);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadStoredCVResult = async () => {
+      try {
+        const raw = await AsyncStorage.getItem("lastCVResult");
+        if (!raw || !isMounted) {
+          return;
+        }
+
+        const parsed = JSON.parse(raw);
+        setCvResult((prev) => ({ ...prev, ...parsed }));
+      } catch {
+        // Ignore cache parse errors and keep defaults.
+      }
+    };
+
+    loadStoredCVResult();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const incoming = route?.params?.cvResult;
+    if (!incoming) {
+      return;
+    }
+
+    const normalized = {
+      score: incoming.score ?? null,
+      insight: incoming.insight ?? incoming.feedback ?? "Analysis complete.",
+      exercise: incoming.exercise ?? "",
+    };
+
+    setCvResult((prev) => ({ ...prev, ...normalized }));
+    AsyncStorage.setItem("lastCVResult", JSON.stringify(normalized)).catch(() => {});
+  }, [route?.params?.cvResult]);
 
   const onSend = () => {
     const t = prompt.trim();
@@ -46,6 +96,7 @@ export default function DashboardScreen({ navigation }) {
   );
 
   return (
+  
     <LinearGradient
       colors={["#4C76D6", "#8E5AAE"]}
       start={{ x: 0.15, y: 0.1 }}
@@ -60,8 +111,11 @@ export default function DashboardScreen({ navigation }) {
         >
           <View style={styles.cardShell}>
             <ScrollView
+              style={{ flex: 1 }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
             >
               <View style={styles.topRow}>
                 <MenuDropdown />
@@ -119,14 +173,14 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.btnRow}>
                   <Pressable
                     style={styles.pillBtn}
-                    onPress={() => navigation.navigate("RecordVideo")}
+                    onPress={() => navigation.navigate("ExerciseSelect")}
                   >
                     <Text style={styles.pillBtnText}>Record Video</Text>
                   </Pressable>
 
                   <Pressable
                     style={styles.pillBtn}
-                    onPress={() => navigation.navigate("RecordVideo")}
+                    onPress={() => navigation.navigate("ExerciseSelect")}
                   >
                     <Text style={styles.pillBtnText}>Upload Video</Text>
                   </Pressable>
@@ -135,11 +189,15 @@ export default function DashboardScreen({ navigation }) {
                 <View style={{ height: 10 }} />
 
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Form Score:</Text> 7.8
+                  <Text style={styles.metaLabel}>Form Score:</Text>{" "}
+                  {cvResult.score === null ? "N/A" : `${Number(cvResult.score).toFixed(2)} / 100`}
                 </Text>
                 <Text style={styles.metaText}>
-                  <Text style={styles.metaLabel}>Feedback:</Text> Keep your back
-                  straight and your arm{"\n"}at a 90 degree angle!
+                  <Text style={styles.metaLabel}>Exercise:</Text>{" "}
+                  {cvResult.exercise || "Not set"}
+                </Text>
+                <Text style={styles.metaText}>
+                  <Text style={styles.metaLabel}>Insight:</Text> {cvResult.insight}
                 </Text>
               </View>
 
@@ -186,6 +244,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.promptBarWrap}>
               <View style={styles.promptBar}>
                 <TextInput
+                  testID="chat-input"
                   value={prompt}
                   onChangeText={setPrompt}
                   placeholder="Enter Your Prompt Here..."
@@ -194,12 +253,19 @@ export default function DashboardScreen({ navigation }) {
                   returnKeyType="send"
                   onSubmitEditing={onSend}
                 />
-                <Pressable style={styles.sendBtn} onPress={onSend}>
+
+                <Pressable
+                  testID="send-button"
+                  style={styles.sendBtn}
+                  onPress={onSend}
+                >
                   <Ionicons name="arrow-up" size={18} color="#4A4A4A" />
                 </Pressable>
               </View>
             </View>
+       
           </View>
+       
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
@@ -211,6 +277,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
 
   cardShell: {
+   
     flex: 1,
     marginHorizontal: 16,
     marginTop: 10,
@@ -218,6 +285,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     paddingTop: 12,
     paddingHorizontal: 14,
+   
     backgroundColor: "rgba(255,255,255,0.14)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.18)",
@@ -226,8 +294,9 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingBottom: 130,
-  },
+  flexGrow: 1,
+  paddingBottom: 130,
+    },
 
   topRow: {
     paddingTop: 6,
@@ -338,16 +407,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 6,
   },
+ 
   stepsIconWrap: {
+ 
     width: 40,
     height: 40,
     borderRadius: 12,
+ 
     backgroundColor: "rgba(255,255,255,0.92)",
     alignItems: "center",
     justifyContent: "center",
+ 
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.10)",
+ 
   },
+ 
   stepsText: {
     color: "rgba(255,255,255,0.92)",
     fontSize: 14,
@@ -360,6 +435,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 10,
   },
+
   bubble: {
     alignSelf: "flex-end",
     backgroundColor: "rgba(255,255,255,0.92)",
@@ -370,6 +446,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.12)",
     marginBottom: 8,
   },
+
   bubbleText: { color: "#222", fontWeight: "900", fontSize: 12 },
 
   chartBars: {
@@ -384,12 +461,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
+
   barCol: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
   bar: {
     width: "100%",
     borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.65)",
   },
+
   barActive: { backgroundColor: "rgba(255,255,255,0.92)" },
   barLabel: {
     marginTop: 8,
@@ -397,6 +476,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
   },
+
   barLabelActive: { color: "rgba(255,255,255,0.95)" },
 
   promptBarWrap: {
@@ -406,7 +486,9 @@ const styles = StyleSheet.create({
     bottom: 18,
     paddingHorizontal: 18,
   },
+
   promptBar: {
+   
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: 28,
     paddingLeft: 16,
@@ -415,21 +497,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+
   promptInput: {
+  
     flex: 1,
     fontSize: 14,
     fontWeight: "600",
     color: "#222",
     paddingRight: 10,
   },
+
   sendBtn: {
+  
     width: 36,
     height: 36,
+
     borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.95)",
+
     alignItems: "center",
     justifyContent: "center",
+
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.12)",
+
   },
+
 });

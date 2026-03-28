@@ -43,17 +43,12 @@ node_modules/
 web-build/
 npm-debug.*
 *.tsbuildinfo
+app/mobile/package-lock.json
 
 # OS
 .DS_Store
 Thumbs.db
 
-<<<<<<< HEAD
-# Node modules
-node_modules/
-=======
-# Video files
+# Video files (local CV processing)
 app/exercises/video_out/
 app/exercises/video_in/
-
->>>>>>> 9909775f5dc4aa11eef0ea5a37642b756a9a08fc
