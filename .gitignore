@@ -50,5 +50,6 @@ app/mobile/package-lock.json
 Thumbs.db
 
 # Video files (local CV processing)
+video_in/
 app/exercises/video_out/
 app/exercises/video_in/
