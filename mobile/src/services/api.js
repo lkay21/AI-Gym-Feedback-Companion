@@ -17,6 +17,7 @@ const apiRequest = async (method, endpoint, data = null) => {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
   };
 
   if (data) {
@@ -139,6 +140,7 @@ export const cvAPI = {
     const res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
       method: "POST",
       body: formData,
+      credentials: "include",
       // do NOT set Content-Type manually for multipart in RN
     });
 
