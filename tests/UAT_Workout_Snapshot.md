@@ -3,7 +3,7 @@
 ## Objective
 Validate that users can easily locate their daily workout, interact with the workout snapshot, and correctly input or verify exercise data provided by their fitness plan. The test also ensures users understand how their inputs affect analytics
 
-## Test Process**
+## Test Process
 1) Login & Setup
   - User logs into the application
   - Confirm that fitness plan has already been generated and assigned
@@ -47,7 +47,7 @@ You will be testing a fitness application feature that helps you view and comple
 - How long did the process feel?
 - What would you improve?
 
-**Data to Record**
+## Data to Record
 - Time to locate workout snapshot
 - Number of clicks to reach workout
 - Errors encountered (if any)
