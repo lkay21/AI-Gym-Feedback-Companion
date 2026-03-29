@@ -33,7 +33,7 @@ jobs:
             --cov=app.chat_module.routes \
             --cov=app.profile_module.service \
             --cov-report=term-missing \
-            --cov-fail-under=65'
+            --cov-fail-under=65
       - name: Generate SBOM with Syft
         run: |
           docker run --rm \
