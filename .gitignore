@@ -49,6 +49,9 @@ app/mobile/package-lock.json
 .DS_Store
 Thumbs.db
 
+SBOM
+SBOM.json
+
 <<<<<<< HEAD
 # Node modules
 node_modules/
