@@ -30,6 +30,7 @@ Validate that users can easily locate their daily workout, interact with the wor
 
 ## Participant Script
 **Introduction**
+
 You will be testing a fitness application feature that helps you view and complete your daily workout. Your goal is to find your assigned workout, interact with it by either entering or verifying exercise data, and observe how the system responds. Please think out loud as you go through the process.
 
 **Tasks for Participants**
