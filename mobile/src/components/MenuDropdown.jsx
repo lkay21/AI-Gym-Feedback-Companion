@@ -14,6 +14,7 @@ export default function MenuDropdown() {
       { label: "Dashboard", routeName: "Dashboard" },
       { label: "Insights", routeName: "Insights" },
       { label: "Snapshot", routeName: "Snapshot" },
+      { label: "User Profile", routeName: "UserProfile" },
     ],
     []
   );
@@ -31,11 +32,14 @@ export default function MenuDropdown() {
         <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.9)" />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        {/* Backdrop */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
 
-        {/* Dropdown */}
         <View style={styles.dropdownWrap}>
           <View style={styles.dropdown}>
             {items.map((it) => {
@@ -71,7 +75,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.14)",
   },
-  menuText: { color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "700" },
+  menuText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -83,7 +91,7 @@ const styles = StyleSheet.create({
     right: 18,
   },
   dropdown: {
-    width: 160,
+    width: 170,
     borderRadius: 14,
     overflow: "hidden",
     backgroundColor: "rgba(20, 10, 40, 0.92)",

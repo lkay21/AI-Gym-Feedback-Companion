@@ -99,13 +99,12 @@ export default function ChatBotScreen({ route }) {
     setError("");
 
     try {
-      // Build conversation history for the backend (map our roles to user/assistant)
       const history = [...messages, userMsg]
-        .filter((m) => !m.kind) // skip static headline if needed
-        .map((m) => ({
-          role: m.role === "bot" ? "assistant" : "user",
-          content: m.text,
-        }));
+      .filter((m) => m.kind !== "intro")
+      .map((m) => ({
+        role: m.role,
+        text: m.text,
+      }));
 
       const result = await chatAPI.sendChatbotMessage(trimmed, history, {});
 
