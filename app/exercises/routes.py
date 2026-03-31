@@ -58,19 +58,19 @@ def _build_insight_from_context(context_dict):
     return "Focus on improving alignment at: " + ", ".join(focus_areas) + "."
 
 
-def parse_user_video(video_file, exercise):
+def parse_user_video(video_file, exercise, user_id):
 
     # ensure coorect video file type
     # video_file = check_file_type(video_file)
 
     input_video_path = os.path.join(VIDEO_IN_DIR, video_file)
-    video_file_name = video_file + '_raw'
+    video_file_name = user_id + '_' + exercise + '?' + video_file + '_raw'
     # upload raw video to S3
     with open(input_video_path, 'rb') as vfile:
         s3.upload_fileobj(vfile, bucket_name, video_file_name)
 
     overall_score, joint_scores, context_dict, _, _, llm_feedback = user_output(
-        video_file, exercise, aws_upload=True
+        video_file, exercise, user_id, aws_upload=True
     )
 
     numeric_score = round(float(overall_score) * 100, 2)
@@ -113,7 +113,7 @@ def analyze_video():
 
     print(f"[CV] Saved upload to {local_path}, exercise={exercise}, user_id={user_id}")
 
-    output = parse_user_video(filename, exercise)
+    output = parse_user_video(filename, exercise, user_id)
     output['user_id'] = user_id
     output['exercise'] = exercise
     return jsonify(output), 200
