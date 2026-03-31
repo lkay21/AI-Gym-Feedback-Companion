@@ -40,8 +40,8 @@ class TestS3(unittest.TestCase):
     def test_aws_video_parse(self, mock_s3, mock_user_output):
 
         mock_user_output.return_value = (0.85, {"RWrist": 0.9}, {}, {}, {}, "Great form!")
-        result = parse_user_video('test.mp4', 'bicep_curl')
-        mock_s3.upload_fileobj.assert_called_once_with(ANY, 'fitness-form-videos', 'test.mp4_raw')
+        result = parse_user_video('test.mp4', 'bicep_curl', 'user123')
+        mock_s3.upload_fileobj.assert_called_once_with(ANY, 'fitness-form-videos', 'user123_bicep_curl?test.mp4_raw')
         
         self.assertIsInstance(result, dict)
         self.assertIn('form_score', result)
@@ -109,7 +109,7 @@ class TestFormScore(unittest.TestCase):
         mock_net.forward.return_value = np.zeros((1, 19, 10, 10))
         mock_cv.dnn.readNetFromTensorflow.return_value = mock_net
 
-        frame_count, fps, frame_width, frame_height = generate_pose('fake.mp4', [], {}, aws_upload=False)
+        frame_count, fps, frame_width, frame_height = generate_pose('fake.mp4', [], {}, 'user123', 'bicep_curl', aws_upload=False)
 
         self.assertEqual(frame_width, 640)
         self.assertEqual(frame_height, 480)
@@ -142,7 +142,7 @@ class TestFormScore(unittest.TestCase):
         mock_net.forward.return_value = np.zeros((1, 19, 10, 10))
         mock_cv.dnn.readNetFromTensorflow.return_value = mock_net
 
-        frame_count, fps, frame_width, frame_height = generate_pose('test.mp4', [], {}, aws_upload=True)
+        frame_count, fps, frame_width, frame_height = generate_pose('test.mp4', [], {}, 'user123', 'bicep_curl', aws_upload=True)
 
         mock_s3.upload_file.assert_called_once()
 
@@ -172,7 +172,7 @@ class TestFormScore(unittest.TestCase):
         mock_net.forward.return_value = np.zeros((1, 19, 10, 10))
         mock_cv.dnn.readNetFromTensorflow.return_value = mock_net
 
-        frame_count, fps, frame_width, frame_height = generate_pose('test.mp4', [], {}, aws_upload=False)
+        frame_count, fps, frame_width, frame_height = generate_pose('test.mp4', [], {}, 'user123', 'bicep_curl', aws_upload=False)
 
         mock_s3.upload_file.assert_not_called()
 
@@ -205,7 +205,7 @@ class TestFormScore(unittest.TestCase):
     @patch('app.exercises.openpose.fetch_standard_data')
     def test_formscore_returns_expected_keys(self, mock_fetch, mock_generate):
         
-        def fake_generate_pose(path, joint_group_nums, frame_vals, aws_upload):
+        def fake_generate_pose(path, joint_group_nums, frame_vals, user_id, exercise, aws_upload):
             for key in frame_vals.keys():
                 frame_vals[key] = {0: (100, 200), 1: (110, 210), 2: (120, 220)}
             return (3, 30.0, 640, 480)
@@ -213,7 +213,7 @@ class TestFormScore(unittest.TestCase):
         mock_generate.side_effect = fake_generate_pose
         mock_fetch.return_value = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-        overall_score, joint_scores, context_dict, user_data, standard_data = FormScore('test.mp4', 'bicep_curl')
+        overall_score, joint_scores, context_dict, user_data, standard_data = FormScore('test.mp4', 'bicep_curl', 'user123')
 
 
         self.assertIsInstance(overall_score, float)
@@ -231,7 +231,7 @@ class TestFormScore(unittest.TestCase):
         mock_formscore.return_value = (0.85, {"RWrist": 0.9}, {}, {}, {})
         mock_genai.Client.return_value.models.generate_content.return_value.text = "{'went_well': ['Good form'], 'needs_improvement': ['Work on speed'], 'fix_next_time': ['Use more control']}"
 
-        overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output('test.mp4', 'bicep_curl')
+        overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output('test.mp4', 'bicep_curl', 'user123')
 
         self.assertIsInstance(overall_score, float)
         self.assertEqual(overall_score, 0.85)
