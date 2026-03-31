@@ -27,6 +27,10 @@ jobs:
             echo "No test files found in tests/ directory, skipping tests"
           fi
 
+      - name: Run integration tests (Chat API with Auth)
+        run: |
+          pytest tests/test_integration_chat_auth.py -v --cov=app --cov-report=term-missing
+
       - name: Run health onboarding tests with coverage
         run: |
           pytest tests/test_llm_conversation_health_onboarding.py tests/test_profile_service_health.py tests/test_chat_plan_endpoint.py -v \
