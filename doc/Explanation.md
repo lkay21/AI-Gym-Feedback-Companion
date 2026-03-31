@@ -1,0 +1,26 @@
+# Explanation: AI Fitness Coach
+
+## System Overview
+The AI Fitness Coach system is designed as a full-stack application that provides personalized workout plans, real-time form feedback, and interactive fitness guidance. The system consists of a React Native mobile frontend, a Python-based backend, and several intelligent subsystems including a workout recommendation engine, a conversational AI interface, and a computer vision (CV) pipeline. User data such as workout history, performance metrics, and generated plans are stored in databases and cloud storage services, allowing the system to maintain personalization across sessions. Overall, the system takes user input, processes it through multiple components, and returns feedback in a way that feels responsive and tailored to each user. While the architecture is designed with cloud scalability in mind, the backend is currently running in a more centralized development setup and has not yet been fully deployed to AWS.
+
+## Architecture Diagrams
+The system architecture is represented through system-level, container-level, and component-level diagrams. The system diagram shows how the mobile frontend communicates with backend APIs and external AI services. The container diagram breaks this into logical services, such as the API layer, processing services, and data storage. The component diagram further highlights internal subsystems like the recommendation engine, CV pipeline, and conversational AI module. Together, these diagrams reflect a modular design where each subsystem is loosely coupled, making it easier to scale and transition to a cloud deployment in the future.
+
+## Key Components
+### Adaptive Workout Recommendation Engine
+The recommendation engine uses a hybrid approach that combines rule-based logic with machine learning. The rule-based portion enforces safety constraints, such as limiting sudden increases in workout intensity. The machine learning component uses historical performance data to adjust recommendations over time. This allows the system to remain predictable and safe while still adapting to individual user progress.
+
+### Conversational AI Interface
+The system uses a hybrid LLM setup built around Google Gemini for handling user interactions. Simpler tasks, like collecting preferences or handling basic prompts, are processed with lightweight logic, while more complex tasks (such as generating workout plans or interpreting user goals) are handled through Gemini API calls. This helps balance response quality with performance and cost. The conversational interface is integrated with the backend so it can access user data and generate more personalized responses.
+
+### User Fitness Dashboard
+The frontend follows a card-based modular design, where each major feature (workout snapshots, AI chat, and user profile) is presented as its own component within a single dashboard. This makes the app easy to navigate and reduces the need for switching between multiple screens. It also allows individual features to be updated independently without affecting the rest of the interface.
+
+### Computer Vision Form Analysis Subsystem
+The CV subsystem uses a two-stage processing pipeline. Users upload workout videos, which are stored in AWS S3 and processed using MediaPipe and OpenCV to extract pose keypoints. After this stage, the system no longer relies on the raw video for analysis, and subsequent processing (like repetition counting and form evaluation) is performed using the extracted keypoint data. This approach reduces storage and computation requirements while maintaining strong analytical performance.
+
+## Design Decisions
+The system design emphasizes balancing performance, scalability, and usability through hybrid approaches. The recommendation engine combines rule-based and machine learning methods to achieve both safety and adaptability. The conversational AI system uses Google Gemini selectively to provide high-quality responses while avoiding unnecessary API usage. The card-based dashboard design was chosen for its simplicity and efficient navigation compared to more complex interface structures. The CV pipeline was designed to operate on keypoint data after initial processing, reducing reliance on full video data and improving efficiency. Additionally, the system’s modular architecture allows for a smoother transition to a fully cloud-based deployment in the future.
+
+## Tradeoffs and Limitations
+The system includes several tradeoffs. Hybrid architectures improve performance and flexibility but introduce additional complexity in implementation and debugging. The use of Google Gemini enhances response quality but can introduce latency and ongoing API costs. The CV pipeline may also experience delays due to video upload and processing time. Additionally, since the backend is not yet deployed in a fully scalable cloud environment, the system may have limitations in handling high levels of concurrent usage. Despite these challenges, the current design provides a strong foundation that balances functionality, performance, and future scalability.
