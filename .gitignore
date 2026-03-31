@@ -49,7 +49,7 @@ app/mobile/package-lock.json
 .DS_Store
 Thumbs.db
 
-# Video uploads / CV output (do not commit large binaries)
+# Video files (local CV processing)
 video_in/
 app/exercises/video_out/
 app/exercises/video_in/
