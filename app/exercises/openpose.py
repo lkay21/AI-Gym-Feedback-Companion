@@ -13,6 +13,8 @@ from sklearn.metrics import root_mean_squared_error
 from scipy.interpolate import interp1d
 import subprocess
 from google import genai
+from google.genai import errors as genai_errors
+import random
 import os
 from moviepy.editor import VideoFileClip
 from pymediainfo import MediaInfo
@@ -33,6 +35,7 @@ AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+LLM_RETRY = 3
 
 s3 = boto3.client(
     's3',
@@ -110,7 +113,7 @@ def video_robustness_check(video_path):
 
     return video_path
 
-def generate_pose(file_path, joint_group, frame_vals, aws_upload):
+def generate_pose(file_path, joint_group, frame_vals, user_id, exercise, aws_upload):
 
     file_path = video_robustness_check(file_path)
 
@@ -239,8 +242,10 @@ def generate_pose(file_path, joint_group, frame_vals, aws_upload):
     out.release()
     cv.destroyAllWindows()
 
+    name_out = user_id + '_' + exercise + '?' + os.path.basename(output_path)
+
     if aws_upload:
-        s3.upload_file(output_path, bucket_name, os.path.basename(output_path))
+        s3.upload_file(output_path, bucket_name, name_out)
 
     return frame_count, fps, frame_width, frame_height
 
@@ -307,7 +312,7 @@ def generate_insights(resampled_example_x, resampled_user_x, resampled_example_y
 
     return insights
 
-def FormScore(user_path, exercise, aws_upload=False):
+def FormScore(user_path, exercise, user_id, aws_upload=False):
 
     context_dict = {}
     user_data = {}
@@ -335,7 +340,7 @@ def FormScore(user_path, exercise, aws_upload=False):
         frame_vals[joint] = {}
 
     start_time = time.time()
-    frame_count, fps, frame_width, frame_height = generate_pose(user_vid, joint_group_nums, frame_vals, aws_upload)
+    frame_count, fps, frame_width, frame_height = generate_pose(user_vid, joint_group_nums, frame_vals, user_id, exercise, aws_upload)
     end_time = time.time()
 
     # for key, val in frame_vals.items():
@@ -399,38 +404,68 @@ def FormScore(user_path, exercise, aws_upload=False):
     return overall_score, joint_scores, context_dict, user_data, standard_data
 
 
-def user_output(user_path, exercise, aws_upload=False):
+def user_output(user_path, exercise, user_id, aws_upload=False):
 
-    overall_score, joint_scores, context_dict, user_data, standard_data = FormScore(user_path, exercise, aws_upload)
+    retry_codes = {408, 409, 425, 429, 500, 502, 503, 504}
+
+    overall_score, joint_scores, context_dict, user_data, standard_data = FormScore(user_path, exercise, user_id, aws_upload)
     out_string = ""
     out_string_sections = ['went_well', 'needs_improvement', 'fix_next_time']
-
     llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
-                 f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
-                 f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
-                 f"Please provide generic feedback for the given exercise that matches the one perfomed by the user and the data provdied to you as context."\
-                 f"Here is your context, "\
-                 f"Overall Score: {overall_score}\n"\
-                 f"Joint Scores: {joint_scores}\n"\
-                 f"Insights: {context_dict}\n"\
-                 f"User Joint Data: {user_data}\n"\
-                 f"Standard Joint Data: {standard_data}\n"\
-                 f"Here are the rules for your output. You DO NOT output any score metrics given to you in context."\
-                 f"You CAN use the scores given in context to give feedback on specific joints."\
-                 f"Your response should be a combination of what went well, what went poorly, and what to do next time for fixing."\
-                 f"Those three categories shoudl each take ONLY take two bullet points each under the given header sections."\
-                 f"Your response should be understandable to any level of lifter (including a beginner with no term knowledge), it should be technical but not too technical that it cannot be understood."\
-                 f"AND finally, there should be no formatting the text (italics, bold etc.)."\
-                 f"Your response should be in the EXACT following format, enclosed in curly braces, without any additional text: "\
-                 f"'went_well': ['bullet point 1', 'bullet point 2'], 'needs_improvement': ['bullet point 1', 'bullet point 2'], 'fix_next_time': ['bullet point 1', 'bullet point 2 ']"
-                 
+                f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
+                f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
+                f"Please provide generic feedback for the given exercise that matches the one perfomed by the user and the data provdied to you as context."\
+                f"Here is your context, "\
+                f"Overall Score: {overall_score}\n"\
+                f"Joint Scores: {joint_scores}\n"\
+                f"Insights: {context_dict}\n"\
+                f"User Joint Data: {user_data}\n"\
+                f"Standard Joint Data: {standard_data}\n"\
+                f"Here are the rules for your output. You DO NOT output any score metrics given to you in context."\
+                f"You CAN use the scores given in context to give feedback on specific joints."\
+                f"Your response should be a combination of what went well, what went poorly, and what to do next time for fixing."\
+                f"Those three categories shoudl each take ONLY take two bullet points each under the given header sections."\
+                f"Your response should be understandable to any level of lifter (including a beginner with no term knowledge), it should be technical but not too technical that it cannot be understood."\
+                f"AND finally, there should be no formatting the text (italics, bold etc.)."\
+                f"Your response should be in the EXACT following format, enclosed in curly braces, without any additional text: "\
+                f"'went_well': ['bullet point 1', 'bullet point 2'], 'needs_improvement': ['bullet point 1', 'bullet point 2'], 'fix_next_time': ['bullet point 1', 'bullet point 2 ']"
+
     client = genai.Client(api_key=GEMINI_API_KEY)
+    response = None
 
-    response = client.models.generate_content(
-        model = "gemini-3-flash-preview",
-        contents=llm_prompt,
-    )
+    for i in range(LLM_RETRY):
 
+        print (f"Attempt {i + 1} of {LLM_RETRY} to call LLM API...")
+        
+        try:
+            response = client.models.generate_content(
+                model="gemini-3-flash-preview",
+                contents=llm_prompt,
+            )
+            break
+        except genai_errors.APIError as err:
+            error_code = getattr(err, "code", None)
+            if error_code not in retry_codes or i == (LLM_RETRY - 1):
+                raise RuntimeError(
+                    f"LLM API call failed (code={error_code}) after {i + 1} attempt(s): {err}"
+                ) from err
+
+            backoff_seconds = (0.5 * (2 ** i)) + random.uniform(0.0, 0.25)
+            print(f"LLM API call failed with error code {error_code}. Retrying in {backoff_seconds:.2f}s...")
+            time.sleep(backoff_seconds)
+        except (TimeoutError, ConnectionError) as err:
+            if i == (LLM_RETRY - 1):
+                raise RuntimeError(
+                    f"LLM API call failed after {i + 1} attempt(s): {err}"
+                ) from err
+
+            backoff_seconds = (0.5 * (2 ** i)) + random.uniform(0.0, 0.25)
+            print(f"Transient LLM transport error. Retrying in {backoff_seconds:.2f}s...")
+            time.sleep(backoff_seconds)
+
+    if response is None:
+        raise RuntimeError("LLM API call returned no response after retries.")
+                
 
     if overall_score >= 0.9:
         out_string += "Great job! Your form looks good overall.\n"
@@ -440,7 +475,10 @@ def user_output(user_path, exercise, aws_upload=False):
         out_string += "Your form needs work. Focus on improving your technique for better results and injury prevention.\n"
 
 
-    llm_sections = ast.literal_eval(response.text)
+    try:
+        llm_sections = ast.literal_eval(response.text)
+    except (SyntaxError, ValueError, TypeError) as err:
+        raise RuntimeError(f"LLM response was not parseable dict text: {response.text}") from err
     for string in out_string_sections:
         out_string += f"\n{string.replace('_', ' ').title()}:\n"
         for bullet in llm_sections[string]:
