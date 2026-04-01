@@ -45,21 +45,15 @@ def main():
             )
             print(f"Seeded health profile for user_id={user_id}\n")
 
-    with app.test_client() as client:
-        with client.session_transaction() as sess:
-            sess["user_id"] = user_id
-            sess["username"] = "testuser"
+    from app.fitness.plan_generation import generate_two_week_plan_and_save
 
-        r = client.post(
-            "/api/fitness-plan/generate",
-            json={},
-            content_type="application/json",
-        )
-        data = r.get_json() if r.content_type and "json" in r.content_type else None
+    with app.app_context():
+        resp, status = generate_two_week_plan_and_save(user_id)
+        data = resp.get_json() if resp.content_type and "json" in resp.content_type else None
 
-        if r.status_code != 200:
-            print("Generate failed:", r.status_code)
-            print(data or r.get_data(as_text=True))
+        if status != 200:
+            print("Generate failed:", status)
+            print(data or resp.get_data(as_text=True))
             return 1
 
         print("--- 2-week fitness plan (bullet points) ---\n")

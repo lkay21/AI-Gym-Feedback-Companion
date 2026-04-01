@@ -44,7 +44,7 @@ This document freezes the HTTP surface of the Flask app as of the inventory pass
 
 | Surface | References |
 |---------|------------|
-| `POST /api/scaffolding/chat` | `tests/test_backend_scaffolding.py`, `tests/test_main_integration.py` |
+| `app.scaffolding_chat.scaffold_chat_post` (same logic as the former `POST /api/scaffolding/chat`) | `tests/test_backend_scaffolding.py`, `tests/test_main_integration.py` |
 | `POST /api/chat`, `POST /api/chat/health-onboarding`, `GET /api/chat/health`, `POST /api/chat/llm`, `POST /api/chat/plan` | `tests/test_integration_chat_auth.py`, `tests/test_llm_conversation_health_onboarding.py`, `tests/test_chat_plan_endpoint.py`, and related |
 | Auth | `tests/test_auth.py` (register, login, **logout**, **check**, **user**), `tests/test_auth_utils.py` |
 | Profile (HTTP) | No dedicated grep hit in `tests/` for `/api/profile` paths in this pass; profile behavior may be covered indirectly — confirm before removing profile routes. |
@@ -54,7 +54,7 @@ This document freezes the HTTP surface of the Flask app as of the inventory pass
 | Script | Endpoint |
 |--------|----------|
 | `scripts/test_health_onboarding_interactive.py` | `POST /api/chat/health-onboarding` |
-| `scripts/test_fitness_plan_generate.py` | `POST /api/fitness-plan/generate` — see section E (blueprint not mounted in `main.py`; script may require a test harness or local registration to work). |
+| `scripts/test_fitness_plan_generate.py` | Calls [`app/fitness/plan_generation.py`](../app/fitness/plan_generation.py) `generate_two_week_plan_and_save` (no REST route). |
 
 ---
 
@@ -70,15 +70,16 @@ Present in [`app/profile_module/routes.py`](../app/profile_module/routes.py); **
 
 ---
 
-## E. Dead, duplicate, or stub HTTP surface
+## E. Removed duplicate / extra HTTP surface (cleanup applied)
 
-| Item | Notes |
-|------|--------|
-| [`app/chatbot/routes.py`](../app/chatbot/routes.py) | Defines a `chat_bp` that is **not** registered in [`app/main.py`](../app/main.py). Active chat HTTP is [`app/chat_module/routes.py`](../app/chat_module/routes.py). Other `app/chatbot/*` modules (e.g. `gemini_client`, `ai_recommendations`) are still imported elsewhere. |
-| [`app/fitness_plan_module/routes.py`](../app/fitness_plan_module/routes.py) | `fitness_plan_bp` (`/api/fitness-plan`) is **not** registered in `main.py`. Plan logic is used via **imports** from `chat_module` (e.g. `generate_plan`), not via this blueprint. |
-| `POST /api/cv/update_standard_data`, `GET /api/cv/get_user_pose_estimation` | Stubs in [`app/exercises/routes.py`](../app/exercises/routes.py). |
+The following were removed or replaced (no longer exposed as routes):
 
-**Inline:** `POST /api/scaffolding/chat` in `main.py` — tests only (see C).
+| Item | Replacement |
+|------|----------------|
+| Duplicate `app/chatbot/routes.py` (removed) | Active HTTP remains only in [`app/chat_module/routes.py`](../app/chat_module/routes.py). |
+| Unregistered `app/fitness_plan_module/routes.py` blueprint (removed) | Plan generation lives in [`app/fitness/plan_generation.py`](../app/fitness/plan_generation.py) (`generate_two_week_plan_and_save`). |
+| CV stub routes | Removed from [`app/exercises/routes.py`](../app/exercises/routes.py). |
+| `POST /api/scaffolding/chat` in [`app/main.py`](../app/main.py) | Logic in [`app/scaffolding_chat.py`](../app/scaffolding_chat.py) for tests; not mounted on the app. |
 
 ---
 
@@ -98,18 +99,15 @@ rg '/api/' scripts --glob '*.py'
 
 - **`/auth/`:** Mobile uses register/login; web static uses register/login; `tests/test_auth.py` exercises logout, check, user; README and `doc/reference.md` document the full set.
 - **`/api/profile`:** Web `chat.js` uses `GET .../health?timestamp=health_profile`; README lists full CRUD; no `mobile/src` hits.
-- **`/api/fitness-plan`:** Blueprint definition and `scripts/test_fitness_plan_generate.py` only; not registered in `main.py`.
-- **`chatbot.routes`:** No Python import registers the blueprint; `app.chatbot` is used for non-route modules.
-- **`scripts/`:** Health onboarding script hits `/api/chat/health-onboarding`; fitness plan script targets `/api/fitness-plan/generate` (see E).
+- **`/api/fitness-plan`:** Removed; use `plan_generation.generate_two_week_plan_and_save` from Python or `/api/chat/plan` for calendar retrieval.
+- **`chatbot.routes`:** File removed; `app.chatbot` non-route modules unchanged.
+- **`scripts/`:** Health onboarding script hits `/api/chat/health-onboarding`; fitness plan script calls `generate_two_week_plan_and_save` directly.
 
 ---
 
 ## Follow-up PRs (scheduled work)
 
-Execute in separate PRs to keep review small:
-
-1. **Dead / stub routes:** Resolve duplicate `chatbot/routes` blueprint vs `chat_module`; either remove dead file(s) or consolidate. Remove or implement CV stub routes. Decide whether to keep `POST /api/scaffolding/chat` and its tests or fold that logic elsewhere.
-2. **Optional unused auth/profile HTTP:** After confirming no external clients, consider removing endpoints only hit by tests — **only** with test updates and documentation updates (`README.md`, `doc/reference.md`).
-3. **Mobile-only product:** If the team drops the Flask web chat, remove web-only routes, templates, and static JS in one coherent change with test updates.
+1. **Optional unused auth/profile HTTP:** After confirming no external clients, consider trimming endpoints only hit by tests — with test and doc updates (`README.md`, `doc/reference.md`).
+2. **Mobile-only product:** If the team drops the Flask web chat, remove web-only routes, templates, and static JS in one coherent change with test updates.
 
 Optional client cleanup: remove unused `chatAPI.sendMessage` from [`mobile/src/services/api.js`](../mobile/src/services/api.js) when tightening the mobile API surface.
