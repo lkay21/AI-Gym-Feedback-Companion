@@ -96,10 +96,6 @@ Set in a `.env` file in the project root (see `.env.example`).
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | DynamoDB, S3, video pipeline |
 | `SECRET_KEY` | Flask sessions (use a strong value in production) |
 
-Optional: rename DynamoDB tables with `DYNAMODB_USER_PROFILES_TABLE`, `DYNAMODB_HEALTH_DATA_TABLE`, `DYNAMODB_FITNESS_PLAN_TABLE`. Mobile: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` if you use Supabase on the client.
-
-**First-time AWS:** create tables with `python -m app.dynamodb_module.init_tables`.
-
 ---
 
 ## DB Schemas
