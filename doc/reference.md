@@ -1,6 +1,6 @@
 # Reference — AI Gym Feedback Companion
 
-**What it is:** Backend (Flask) + optional mobile app (Expo). Users sign in with Supabase, store profile and health data in AWS DynamoDB, get AI chat and workout plans via Google Gemini, and can upload workout videos for form feedback.
+**What it is:** Backend (Flask) +  mobile app (Expo). Users sign in with Supabase, store profile and health data in AWS DynamoDB, get AI chat and workout plans via Google Gemini, and can upload workout videos for form feedback.
 
 **Run locally:** `python -m app.main` → API on port **5001**. Mobile: `mobile/` (set API base URL to your machine).
 
@@ -106,11 +106,10 @@ Set in a `.env` file in the project root (see `.env.example`).
 | **DynamoDB `user_profiles`** | One item per user id. |
 | **DynamoDB `health_data`** | User id + timestamp; fields like age, height, weight, gender, fitness goal, and extra context JSON. |
 | **DynamoDB `fitness_plan`** | User id + workout id; exercise details and dates for generated plans. |
-| **SQLite** (`app/instance/users.db`) | Legacy/local table from the ORM; **login uses Supabase**, not this file. |
 
 ---
 
-## Project specific — Health onboarding & chat
+## Health Onboarding to Fitness Plan Generation Flow
 
 - New users answer fixed questions (age, height, weight, gender), then a fitness goal, then a few follow-ups.
 - That data is stored in **health_data** (DynamoDB).
@@ -119,7 +118,7 @@ Set in a `.env` file in the project root (see `.env.example`).
 
 ---
 
-## Project specific — Exercise form (video)
+## CV Form Scoring Pipeline Flow
 
 - **`POST /api/cv/analyze`** accepts a short video and an exercise name; the server scores form and returns text feedback and scores.
 - Videos are stored in bucket **`fitness-form-videos`** (AWS).
