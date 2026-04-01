@@ -199,5 +199,5 @@ To update the data file used for exercise form comparison between user videos an
 The data inside `./app/exercises/exercise_data` should be updated for already existing exercises and created for new exercises. The data should present itself as a dictionary of numbers for each joint pertaining to a given exercise.
 
 #### GENAI Statement
-For this coumentation, GenAI was used to convert an original docx file consisting of this content, into the appropriate .md markdown file. It was also used, on occasion, to ensure there were no holes in described
+For this documentation, GenAI was used to convert an original docx file consisting of this content, into the appropriate .md markdown file. It was also used, on occasion, to ensure there were no holes in described
 steps for a given how-to.
