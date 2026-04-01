@@ -1,11 +1,5 @@
 # Reference — AI Gym Feedback Companion
 
-**What it is:** Backend (Flask) +  mobile app (Expo). Users sign in with Supabase, store profile and health data in AWS DynamoDB, get AI chat and workout plans via Google Gemini, and can upload workout videos for form feedback.
-
-**Run locally:** `python -m app.main` → API on port **5001**. Mobile: `mobile/` (set API base URL to your machine).
-
----
-
 ## System Structure
 
 Components below map to folders under `app/` unless noted. The running server is built in **`app/main.py`** (`create_app()`).
@@ -55,11 +49,6 @@ Components below map to folders under `app/` unless noted. The running server is
 - **Expo / React Native** screens call the Flask API with `fetch` and **`credentials: "include"`** so session cookies match the browser-style auth flow.
 - **Config:** `mobile/src/services/api.js` defines the API base URL (localhost vs emulator IP); optional Supabase env vars on the device help resolve the current user id for video upload.
 - **Typical calls:** `authAPI` (register/login), `chatAPI.sendChatbotMessage` → `/api/chat/llm`, `chatAPI.generatePlan` → `/api/chat/plan`, `cvAPI.analyzeVideo` → `/api/cv/analyze`.
-
-### 7. Supporting pieces
-
-- **Logging:** `app/logger.py` — console + rotating file under `logs/`; controlled with `LOG_LEVEL` / `ENABLE_LOGGING`.
-- **Test / scaffolding:** `POST /api/scaffolding/chat` in `main.py` uses `app/chatbot/ai_recommendations.py` and a small in-memory profile type from `app/database/models.py` — intended for development/tests, not the main product path.
 
 ---
 
