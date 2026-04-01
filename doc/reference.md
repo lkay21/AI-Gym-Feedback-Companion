@@ -20,7 +20,6 @@ Components below map to folders under `app/` unless noted. The running server is
   - `/api/cv/*` → `exercises` (computer vision)
 - **Sessions:** cookie-based; after Supabase login the server stores tokens and `user_id` for later API calls.
 - **CORS:** enabled for Expo dev URLs (`localhost:8081`, `19006`, etc.) on `/auth/*` and `/api/*`, with credentials so the mobile/web client can send cookies.
-- **SQLite (SQLAlchemy):** `app/instance/users.db` is created on startup for a legacy `User` model; **sign-in is not driven by this file** (Supabase is).
 - **Startup:** loads fitness benchmark data via `app/fitness/benchmark_loader.py` into `app.benchmarks` (fails fast if data is missing).
 - **Pages:** `/` → login template, `/chat` → chat template; static JS/CSS under `app/static/`, HTML under `app/templates/`.
 
@@ -36,7 +35,7 @@ Components below map to folders under `app/` unless noted. The running server is
 - **HTTP layer** (`routes.py`): CRUD for `/api/profile/user` and `/api/profile/health`; every call expects an authenticated session and scopes data to `session["user_id"]`.
 - **Services** (`service.py`): `ProfileService` and `HealthDataService` read/write DynamoDB through the shared client.
 - **Models** (`models.py`): `UserProfile` is minimal (user id only in DynamoDB); `HealthData` holds demographics, goal, and JSON **context** (onboarding state, Q&A).
-- **DynamoDB client** (`dynamodb_module/client.py`): boto3 setup, table names from env (defaults: `user_profiles`, `health_data`, `fitness_plan`), and `init_tables.py` to create tables once per environment.
+- **DynamoDB client** (`dynamodb_module/client.py`): table names from env (defaults: `user_profiles`, `health_data`, `fitness_plan`), and `init_tables.py` to create tables once per environment.
 
 ### 4. Chat, onboarding & fitness plans (`app/chat_module/`, `app/fitness/`, `app/fitness_plan_module/`)
 
