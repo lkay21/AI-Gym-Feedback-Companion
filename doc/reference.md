@@ -71,6 +71,8 @@ Components below map to folders under `app/` unless noted. The running server is
 
 **Health check:** `GET /api/chat/health` — confirms Gemini is configured.
 
+For a **consumer-by-consumer** breakdown of every route (mobile vs web vs tests vs unused), see [`doc/backend-api-inventory.md`](backend-api-inventory.md).
+
 ---
 
 ## Configuration
