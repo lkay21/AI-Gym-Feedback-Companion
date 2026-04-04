@@ -180,9 +180,6 @@ export default function SnapshotScreen({ navigation }) {
                       <Text style={styles.exerciseTitle}>{e.title}</Text>
                       <Text style={styles.exerciseDuration}>{e.duration}</Text>
                     </View>
-                    <Pressable style={styles.playBtn} onPress={() => {}}>
-                      <Ionicons name="play" size={16} color="#2E2E2E" />
-                    </Pressable>
                   </View>
                 ))}
               </View>
