@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -12,7 +12,6 @@ export default function MenuDropdown() {
     () => [
       { label: "ChatBot", routeName: "ChatBot" },
       { label: "Dashboard", routeName: "Dashboard" },
-      { label: "Insights", routeName: "Insights" },
       { label: "Snapshot", routeName: "Snapshot" },
       { label: "User Profile", routeName: "UserProfile" },
     ],

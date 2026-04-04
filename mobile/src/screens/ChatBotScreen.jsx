@@ -191,9 +191,7 @@ export default function ChatBotScreen({ route }) {
 
   return (
     <LinearGradient
-      colors={["#4C76D6", "#8E5AAE"]}
-      start={{ x: 0.15, y: 0.1 }}
-      end={{ x: 0.85, y: 0.95 }}
+      colors={["#7c3aed", "#6366f1", "#4c1d95"]}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.safe}>

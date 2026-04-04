@@ -26,6 +26,7 @@ export default function SignupScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [errorMessage, setErrorMessage] = useState('');
+  const [signedUp, setSignedUp] = useState(false);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -86,13 +87,7 @@ export default function SignupScreen({ navigation }) {
       setLoading(false);
 
       if (result.success) {
-        setErrorMessage(''); // Clear errors on success
-        Alert.alert('Success', 'Account created successfully!', [
-          {
-            text: 'OK',
-            onPress: () => navigation.replace('Dashboard'),
-          },
-        ]);
+        setSignedUp(true);
       } else {
         // Display user-friendly error messages
         let errorMsg = result.error || 'Sign up failed. Please try again.';
@@ -143,6 +138,24 @@ export default function SignupScreen({ navigation }) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {signedUp ? (
+              <View style={styles.successContent}>
+                <View style={styles.successIconWrap}>
+                  <Text style={styles.successIcon}>✓</Text>
+                </View>
+                <Text style={styles.successTitle}>Account Created!</Text>
+                <Text style={styles.successBody}>
+                  Your account has been created successfully.{'\n'}
+                  Head back to the sign in page to log in.
+                </Text>
+                <TouchableOpacity
+                  style={styles.signInButton}
+                  onPress={() => navigation.navigate('Login')}
+                >
+                  <Text style={styles.signInButtonText}>Go to Sign In</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
             <View style={styles.content}>
               <Text style={styles.title}>AI Workout Companion</Text>
               
@@ -318,6 +331,7 @@ export default function SignupScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             </View>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -492,5 +506,58 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  // ── Success state ──
+  successContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 36,
+    paddingVertical: 60,
+    gap: 16,
+  },
+  successIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(52, 211, 153, 0.2)',
+    borderWidth: 2,
+    borderColor: '#34D399',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  successIcon: {
+    fontSize: 36,
+    color: '#34D399',
+    fontWeight: '900',
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  successBody: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.72)',
+    textAlign: 'center',
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  signInButton: {
+    marginTop: 12,
+    backgroundColor: '#4c1d95',
+    borderRadius: 999,
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    alignItems: 'center',
+  },
+  signInButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

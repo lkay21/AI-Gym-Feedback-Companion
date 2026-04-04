@@ -117,10 +117,10 @@ export default function LoginScreen({ navigation }) {
                 ) : null}
                 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Username</Text>
+                  <Text style={styles.label}>Email</Text>
                   <TextInput
                     style={[styles.input, errors.username && styles.inputError]}
-                    placeholder="Enter your username"
+                    placeholder="Enter your email"
                     placeholderTextColor="#9ca3af"
                     value={username}
                     onChangeText={(text) => {
@@ -191,23 +191,6 @@ export default function LoginScreen({ navigation }) {
                   )}
                 </TouchableOpacity>
 
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>- OR -</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <TouchableOpacity
-                  style={styles.googleButton}
-                  onPress={() => Alert.alert('Coming Soon', 'Google login will be available soon')}
-                >
-                  <View style={styles.googleButtonContent}>
-                    <View style={styles.googleLogo}>
-                      <Text style={styles.googleLogoText}>G</Text>
-                    </View>
-                    <Text style={styles.googleButtonText}>Login with Google</Text>
-                  </View>
-                </TouchableOpacity>
               </View>
             </View>
           </ScrollView>

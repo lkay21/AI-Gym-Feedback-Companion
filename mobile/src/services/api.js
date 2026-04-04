@@ -47,6 +47,19 @@ const apiRequest = async (method, endpoint, data = null) => {
   }
 };
 
+// Merges the authenticated email into the locally stored profile without
+// overwriting any fitness data the user has already saved.
+const seedProfileEmail = async (email) => {
+  if (!email) return;
+  try {
+    const raw = await AsyncStorage.getItem('userProfile');
+    const existing = raw ? JSON.parse(raw) : {};
+    await AsyncStorage.setItem('userProfile', JSON.stringify({ ...existing, email }));
+  } catch {
+    // Non-critical — profile screen will just show an empty email field.
+  }
+};
+
 // Auth API functions
 export const authAPI = {
   register: async (email, username, password) => {
@@ -58,11 +71,17 @@ export const authAPI = {
     
     // Store user data on success
     if (result.success && result.data.user) {
+      const newUserId = String(result.data.user.id);
+      const prevUserId = await AsyncStorage.getItem('userId');
+      if (prevUserId !== newUserId) {
+        await AsyncStorage.multiRemove(['userProfile', 'lastCVResult']);
+      }
       await AsyncStorage.setItem('user', JSON.stringify(result.data.user));
       await AsyncStorage.setItem('username', result.data.user.username);
-      await AsyncStorage.setItem('userId', String(result.data.user.id));
+      await AsyncStorage.setItem('userId', newUserId);
+      await seedProfileEmail(result.data.user.email);
     }
-    
+
     return result;
   },
 
@@ -71,14 +90,20 @@ export const authAPI = {
       username,
       password,
     });
-    
+
     // Store user data on success
     if (result.success && result.data.user) {
+      const newUserId = String(result.data.user.id);
+      const prevUserId = await AsyncStorage.getItem('userId');
+      if (prevUserId !== newUserId) {
+        await AsyncStorage.multiRemove(['userProfile', 'lastCVResult']);
+      }
       await AsyncStorage.setItem('user', JSON.stringify(result.data.user));
       await AsyncStorage.setItem('username', result.data.user.username);
-      await AsyncStorage.setItem('userId', String(result.data.user.id));
+      await AsyncStorage.setItem('userId', newUserId);
+      await seedProfileEmail(result.data.user.email);
     }
-    
+
     return result;
   },
 
@@ -136,11 +161,19 @@ export const cvAPI = {
       });
     }
 
-    const res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
-      method: "POST",
-      body: formData,
-      // do NOT set Content-Type manually for multipart in RN
-    });
+    let res;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
+        method: "POST",
+        body: formData,
+        // do NOT set Content-Type manually for multipart in RN
+      });
+    } catch (networkErr) {
+      return {
+        success: false,
+        error: networkErr?.message || "Network error — check your connection and server URL.",
+      };
+    }
 
     let data = null;
     try {

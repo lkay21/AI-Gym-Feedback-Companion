@@ -1,4 +1,3 @@
-import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator, CardStyleInterpolators } from "@react-navigation/stack";
 import { StatusBar } from "expo-status-bar";
@@ -27,7 +26,7 @@ export default function App() {
           screenOptions={{
             headerShown: false,
             gestureEnabled: true,
-            cardStyle: { backgroundColor: "#1e1b4b" },
+            cardStyle: { backgroundColor: "#4c1d95" },
             cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
             transitionSpec: {
               open: {
