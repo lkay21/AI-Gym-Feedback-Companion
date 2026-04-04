@@ -31,12 +31,12 @@ Components below map to folders under `app/` unless noted. The running server is
 - **Models** (`models.py`): `UserProfile` is minimal (user id only in DynamoDB); `HealthData` holds demographics, goal, and JSON **context** (onboarding state, Q&A).
 - **DynamoDB client** (`dynamodb_module/client.py`): table names from env (defaults: `user_profiles`, `health_data`, `fitness_plan`), and `init_tables.py` to create tables once per environment.
 
-### 4. Chat, onboarding & fitness plans (`app/chat_module/`, `app/fitness/`, `app/fitness_plan_module/`)
+### 4. Chat, onboarding & fitness plans (`app/chat_module/`, `app/fitness/`)
 
 - **Routes** (`chat_module/routes.py`): `/api/chat/health-onboarding` (guided questions), `/api/chat` and `/api/chat/llm` (Gemini replies), `/api/chat/plan` (returns a structured calendar built from stored plan rows), `GET /api/chat/health` (config probe).
 - **Gemini** (`chat_module/gemini_client.py`): extends the shared client in `app/chatbot/gemini_client.py` with helpers for onboarding intros and follow-up questions.
 - **Plan shaping** (`app/fitness/plan_transformer.py`): converts raw DynamoDB plan entries into a **calendar** structure the API and LLM summaries use.
-- **Plan storage** (`fitness_plan_module/service.py` + `models.py`): one DynamoDB item per user + workout id; generation/writes are triggered from the chat flow (not a separate public blueprint in `main.py`).
+- **Plan storage & generation** (`app/fitness/plan_models.py`, `plan_service.py`, `plan_generation.py`): one DynamoDB item per user + workout id; `FitnessPlanService` CRUD; `generate_two_week_plan_and_save` runs from the chat flow (no `/api/fitness-plan` REST surface).
 
 ### 5. Exercise form & video (`app/exercises/`)
 
@@ -70,6 +70,8 @@ Components below map to folders under `app/` unless noted. The running server is
 | Video | POST | `/api/cv/analyze` | Form analysis. `multipart/form-data`: file field `video`, plus `exercise`, `user_id`. |
 
 **Health check:** `GET /api/chat/health` — confirms Gemini is configured.
+
+For a **consumer-by-consumer** breakdown of every route (mobile vs web vs tests vs unused), see [`doc/backend-api-inventory.md`](backend-api-inventory.md).
 
 ---
 

@@ -10,7 +10,7 @@ from app.fitness.plan_transformer import (
     PlanParseError,
     mapDatabasePlanToCalendar,
 )
-from app.fitness_plan_module.service import FitnessPlanService
+from app.fitness.plan_service import FitnessPlanService
 from app.profile_module.service import HealthDataService
 
 chat_bp = Blueprint('chat', __name__)
@@ -451,10 +451,10 @@ def chat_gemini():
                     return jsonify(onboarding_json), status_code
 
                 # Onboarding completed: invoke existing fitness-plan generation logic.
-                from app.fitness_plan_module.routes import generate_plan as generate_plan_route
+                from app.fitness.plan_generation import generate_two_week_plan_and_save
 
                 try:
-                    generate_plan_route()
+                    generate_two_week_plan_and_save(user_id)
                 except Exception as exc:  # pragma: no cover - defensive
                     print(f"Warning: failed to generate fitness plan for {user_id}: {exc}")
 
@@ -537,7 +537,7 @@ def generate_plan():
     Request body: {} (empty, uses authenticated user's health profile)
     """
     # Import here to avoid circular dependency
-    from app.fitness_plan_module.service import FitnessPlanService
+    from app.fitness.plan_service import FitnessPlanService
     from app.profile_module.service import HealthDataService
     from app.fitness.plan_transformer import mapDatabasePlanToCalendar, PlanParseError
     

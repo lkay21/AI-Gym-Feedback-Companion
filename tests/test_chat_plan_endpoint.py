@@ -133,9 +133,9 @@ def test_generate_plan_success(client, monkeypatch, mock_authenticated_user):
             FitnessPlan = MockFitnessPlan
             FitnessPlanService = MockFitnessPlanService
             HealthDataService = MockHealthDataService
-        if args and args[0] == "app.fitness_plan_module.models":
+        if args and args[0] == "app.fitness.plan_models":
             return Holder()
-        if args and args[0] == "app.fitness_plan_module.service":
+        if args and args[0] == "app.fitness.plan_service":
             return Holder()
         if args and args[0] == "app.profile_module.service":
             return Holder()
@@ -146,8 +146,8 @@ def test_generate_plan_success(client, monkeypatch, mock_authenticated_user):
     
     # Simpler approach: just patch inside test
     import sys
-    original_fitness_plan_service = sys.modules.get("app.fitness_plan_module.service")
-    original_fitness_plan_models = sys.modules.get("app.fitness_plan_module.models")
+    original_fitness_plan_service = sys.modules.get("app.fitness.plan_service")
+    original_fitness_plan_models = sys.modules.get("app.fitness.plan_models")
     
     # Create mock modules
     import types
@@ -157,8 +157,8 @@ def test_generate_plan_success(client, monkeypatch, mock_authenticated_user):
     mock_models_module = types.ModuleType("mock_models")
     mock_models_module.FitnessPlan = MockFitnessPlan
     
-    monkeypatch.setitem(sys.modules, "app.fitness_plan_module.service", mock_service_module)
-    monkeypatch.setitem(sys.modules, "app.fitness_plan_module.models", mock_models_module)
+    monkeypatch.setitem(sys.modules, "app.fitness.plan_service", mock_service_module)
+    monkeypatch.setitem(sys.modules, "app.fitness.plan_models", mock_models_module)
     
     response = client.post("/api/chat/plan", json={})
     
@@ -237,7 +237,7 @@ def test_generate_plan_no_plan_returns_404(client, monkeypatch, mock_authenticat
             return []  # no plan
 
     monkeypatch.setattr("app.profile_module.service.HealthDataService", MockHealthDataService)
-    monkeypatch.setattr("app.fitness_plan_module.service.FitnessPlanService", MockFitnessPlanService)
+    monkeypatch.setattr("app.fitness.plan_service.FitnessPlanService", MockFitnessPlanService)
 
     response = client.post("/api/chat/plan", json={})
     assert response.status_code == 404
