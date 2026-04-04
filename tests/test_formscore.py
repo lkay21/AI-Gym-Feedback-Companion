@@ -248,9 +248,9 @@ class TestFormScore(unittest.TestCase):
         self.assertEqual(overall_score, 0.85)
         self.assertIsInstance(joint_scores, dict)
         self.assertIsInstance(out_string, str)
-        self.assertIn("What_went_well", out_string)
-        self.assertIn("What_needs_improvement", out_string)
-        self.assertIn("What_to_fix_next_time", out_string)
+        self.assertIn("What went well", out_string)
+        self.assertIn("What needs improvement", out_string)
+        self.assertIn("What to fix next time", out_string)
 
     
 if __name__ == "__main__":
