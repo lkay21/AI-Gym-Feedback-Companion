@@ -219,7 +219,7 @@ export default function DashboardScreen({ navigation, route }) {
               >
                 <View style={styles.cardHeaderRow}>
                   <Text style={styles.cardTitle}>Weekly Workout Plan</Text>
-                  <Ionicons name="chevron-forward-circle-outline" size={18} color="rgba(167,139,250,0.85)" />
+                  <Ionicons name="chevron-forward-circle" size={24} color="rgba(220,210,255,1)" />
                 </View>
                 <Text style={styles.cardSub}>{WEEK_RANGE}</Text>
                 <View style={{ height: 10 }} />
@@ -244,7 +244,7 @@ export default function DashboardScreen({ navigation, route }) {
                   <Text style={styles.cardTitle}>Form Score</Text>
                   <View style={styles.formHeaderIcons}>
                     <Ionicons name="videocam-outline" size={18} color="rgba(255,255,255,0.9)" />
-                    <Ionicons name="chevron-forward-circle-outline" size={18} color="rgba(167,139,250,0.85)" />
+                    <Ionicons name="chevron-forward-circle" size={24} color="rgba(220,210,255,1)" />
                   </View>
                 </View>
 
