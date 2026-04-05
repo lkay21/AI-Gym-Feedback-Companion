@@ -1,6 +1,8 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator, CardStyleInterpolators } from "@react-navigation/stack";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import SignupScreen from "./src/screens/SignupScreen";
@@ -18,63 +20,65 @@ const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <>
-      <StatusBar style="light" />
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Login"
-          screenOptions={{
-            headerShown: false,
-            gestureEnabled: true,
-            cardStyle: { backgroundColor: "#4c1d95" },
-            cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-            transitionSpec: {
-              open: {
-                animation: "timing",
-                config: {
-                  duration: 280,
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName="Login"
+            screenOptions={{
+              headerShown: false,
+              gestureEnabled: true,
+              cardStyle: { backgroundColor: "#4c1d95" },
+              cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+              transitionSpec: {
+                open: {
+                  animation: "timing",
+                  config: {
+                    duration: 280,
+                  },
+                },
+                close: {
+                  animation: "timing",
+                  config: {
+                    duration: 220,
+                  },
                 },
               },
-              close: {
-                animation: "timing",
-                config: {
-                  duration: 220,
-                },
-              },
-            },
-          }}
-        >
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Signup" component={SignupScreen} />
-          <Stack.Screen name="Chat" component={ChatScreen} />
-          <Stack.Screen name="Plan" component={PlanScreen} />
-          <Stack.Screen name="ChatBot" component={ChatBotScreen} />
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
-          <Stack.Screen name="Insights" component={InsightsScreen} />
-          <Stack.Screen name="Snapshot" component={SnapshotScreen} />
-          <Stack.Screen
-            name="RecordVideo"
-            component={RecordVideoScreen}
-            options={{
-              cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
             }}
-          />
-          <Stack.Screen
-            name="ExerciseSelect"
-            component={ExerciseSelectScreen}
-            options={{
-              cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
-            }}
-          />
-          <Stack.Screen
-            name="UserProfile"
-            component={UserProfileScreen}
-            options={{
-              cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
-            }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </>
+          >
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="Plan" component={PlanScreen} />
+            <Stack.Screen name="ChatBot" component={ChatBotScreen} />
+            <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="Insights" component={InsightsScreen} />
+            <Stack.Screen name="Snapshot" component={SnapshotScreen} />
+            <Stack.Screen
+              name="RecordVideo"
+              component={RecordVideoScreen}
+              options={{
+                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+              }}
+            />
+            <Stack.Screen
+              name="ExerciseSelect"
+              component={ExerciseSelectScreen}
+              options={{
+                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+              }}
+            />
+            <Stack.Screen
+              name="UserProfile"
+              component={UserProfileScreen}
+              options={{
+                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+              }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
