@@ -2,13 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 
-// Update this to your Flask backend URL
-// For iOS Simulator: 'http://localhost:5001'
-// For Android Emulator: 'http://10.0.2.2:5001'
-// For Physical Device: 'http://YOUR_COMPUTER_IP:5001'
-const API_BASE_URL = __DEV__ 
-  ? 'http://localhost:5001'
-  : 'http://10.0.2.2:5001';
+// Optional: set EXPO_PUBLIC_API_URL in mobile/.env (no trailing slash) to use ECS/production backend.
+// If unset: iOS simulator dev → localhost:5001; Android release build → 10.0.2.2:5001.
+const _trimSlash = (u) => (u || '').replace(/\/+$/, '');
+const _fromEnv = _trimSlash(process.env.EXPO_PUBLIC_API_URL || '');
+const API_BASE_URL = _fromEnv
+  ? _fromEnv
+  : __DEV__
+    ? 'http://localhost:5001'
+    : 'http://10.0.2.2:5001';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
