@@ -283,7 +283,7 @@ export default function DashboardScreen({ navigation, route }) {
                       {!!cvResult.exercise && (
                         <Text style={styles.scoreExercise}>{cvResult.exercise}</Text>
                       )}
-                      <Text style={styles.scoreInsight} numberOfLines={3}>
+                      <Text style={styles.scoreInsight}>
                         {cvResult.insight}
                       </Text>
                       <View style={styles.reuploadRow}>
