@@ -14,6 +14,19 @@ import json
 from app.main import create_app
 from app.database.models import UserProfile
 from app.logger import get_logger
+from app.scaffolding_chat import scaffold_chat_post
+
+
+def _call_scaffold_chat(app, payload: dict):
+    """Invoke scaffold chat logic (replaces former POST /api/scaffolding/chat)."""
+    with app.app_context():
+        with app.test_request_context(
+            "/",
+            method="POST",
+            data=json.dumps(payload),
+            content_type="application/json",
+        ):
+            return scaffold_chat_post()
 
 
 class TestAppCreation(unittest.TestCase):
@@ -60,7 +73,7 @@ class TestAppCreation(unittest.TestCase):
 
 
 class TestChatAPIEndpoint(unittest.TestCase):
-    """Test /api/chat endpoint functionality."""
+    """Test scaffold chat handler (AI recommendation flow)."""
     
     def setUp(self):
         """Set up test client."""
@@ -69,9 +82,9 @@ class TestChatAPIEndpoint(unittest.TestCase):
             self.app = create_app()
             self.client = self.app.test_client()
     
-    @patch('app.main.get_ai_recommendation')
+    @patch('app.scaffolding_chat.get_ai_recommendation')
     def test_chat_api_with_message_and_profile(self, mock_ai):
-        """Test /api/chat with message and profile."""
+        """Test scaffold chat with message and profile."""
         mock_ai.return_value = "Here's your fitness recommendation"
         
         payload = {
@@ -83,36 +96,28 @@ class TestChatAPIEndpoint(unittest.TestCase):
             }
         }
         
-        response = self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = _call_scaffold_chat(self.app, payload)
         
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
+        data = response.get_json()
         self.assertIn('response', data)
         self.assertEqual(data['response'], "Here's your fitness recommendation")
     
     def test_chat_api_missing_message(self):
-        """Test /api/chat without message returns 400."""
+        """Test scaffold chat without message returns 400."""
         payload = {
             'profile': {'name': 'Test User'}
         }
         
-        response = self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = _call_scaffold_chat(self.app, payload)
         
         self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data)
+        data = response.get_json()
         self.assertIn('error', data)
     
-    @patch('app.main.get_ai_recommendation')
+    @patch('app.scaffolding_chat.get_ai_recommendation')
     def test_chat_api_with_minimal_profile(self, mock_ai):
-        """Test /api/chat with minimal profile data."""
+        """Test scaffold chat with minimal profile data."""
         mock_ai.return_value = "General fitness advice"
         
         payload = {
@@ -120,19 +125,15 @@ class TestChatAPIEndpoint(unittest.TestCase):
             'profile': {}
         }
         
-        response = self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = _call_scaffold_chat(self.app, payload)
         
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
+        data = response.get_json()
         self.assertEqual(data['response'], "General fitness advice")
     
-    @patch('app.main.get_ai_recommendation')
+    @patch('app.scaffolding_chat.get_ai_recommendation')
     def test_chat_api_creates_user_profile(self, mock_ai):
-        """Test that /api/chat creates UserProfile from request."""
+        """Test that scaffold chat creates UserProfile from request."""
         mock_ai.return_value = "Response"
         
         payload = {
@@ -145,11 +146,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
             }
         }
         
-        self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        _call_scaffold_chat(self.app, payload)
         
         # Verify AI was called with UserProfile
         mock_ai.assert_called_once()
@@ -162,7 +159,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
         self.assertEqual(profile_arg.gender, 'female')
         self.assertIn('endurance', profile_arg.fitness_goals)
     
-    @patch('app.main.get_ai_recommendation')
+    @patch('app.scaffolding_chat.get_ai_recommendation')
     def test_chat_api_passes_message_to_ai(self, mock_ai):
         """Test that message is passed to AI recommendation function."""
         mock_ai.return_value = "Response"
@@ -173,11 +170,7 @@ class TestChatAPIEndpoint(unittest.TestCase):
             'profile': {'name': 'Test'}
         }
         
-        self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        _call_scaffold_chat(self.app, payload)
         
         # Verify message was passed
         mock_ai.assert_called_once()
@@ -186,9 +179,9 @@ class TestChatAPIEndpoint(unittest.TestCase):
         
         self.assertEqual(message_arg, test_message)
     
-    @patch('app.main.get_ai_recommendation')
+    @patch('app.scaffolding_chat.get_ai_recommendation')
     def test_chat_api_missing_api_key_error(self, mock_ai):
-        """Test /api/chat when AI API key is missing."""
+        """Test scaffold chat when AI API key is missing."""
         mock_ai.side_effect = ValueError("GEMINI_API_KEY is not set")
         
         payload = {
@@ -196,19 +189,15 @@ class TestChatAPIEndpoint(unittest.TestCase):
             'profile': {'name': 'User'}
         }
         
-        response = self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = _call_scaffold_chat(self.app, payload)
         
         self.assertEqual(response.status_code, 500)
-        data = json.loads(response.data)
+        data = response.get_json()
         self.assertIn('AI service is not configured', data['error'])
     
-    @patch('app.main.get_ai_recommendation')
+    @patch('app.scaffolding_chat.get_ai_recommendation')
     def test_chat_api_ai_error_handling(self, mock_ai):
-        """Test /api/chat handles AI errors gracefully."""
+        """Test scaffold chat handles AI errors gracefully."""
         mock_ai.side_effect = Exception("API call failed")
         
         payload = {
@@ -216,14 +205,10 @@ class TestChatAPIEndpoint(unittest.TestCase):
             'profile': {'name': 'User'}
         }
         
-        response = self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = _call_scaffold_chat(self.app, payload)
         
         self.assertEqual(response.status_code, 500)
-        data = json.loads(response.data)
+        data = response.get_json()
         self.assertIn('error', data)
 
 
@@ -260,7 +245,7 @@ class TestIntegrationFlow(unittest.TestCase):
             self.app = create_app()
             self.client = self.app.test_client()
     
-    @patch('app.main.get_ai_recommendation')
+    @patch('app.scaffolding_chat.get_ai_recommendation')
     def test_full_chat_flow(self, mock_ai):
         """Test complete chat flow from request to response."""
         mock_ai.return_value = "Your personalized fitness plan..."
@@ -279,15 +264,11 @@ class TestIntegrationFlow(unittest.TestCase):
         }
         
         # Send request
-        response = self.client.post(
-            '/api/scaffolding/chat',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        response = _call_scaffold_chat(self.app, payload)
         
         # Verify response
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
+        data = response.get_json()
         self.assertEqual(data['response'], "Your personalized fitness plan...")
         
         # Verify AI was called correctly

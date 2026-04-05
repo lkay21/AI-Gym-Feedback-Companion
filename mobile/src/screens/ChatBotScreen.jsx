@@ -99,13 +99,12 @@ export default function ChatBotScreen({ route }) {
     setError("");
 
     try {
-      // Build conversation history for the backend (map our roles to user/assistant)
       const history = [...messages, userMsg]
-        .filter((m) => !m.kind) // skip static headline if needed
-        .map((m) => ({
-          role: m.role === "bot" ? "assistant" : "user",
-          content: m.text,
-        }));
+      .filter((m) => m.kind !== "intro")
+      .map((m) => ({
+        role: m.role,
+        text: m.text,
+      }));
 
       const result = await chatAPI.sendChatbotMessage(trimmed, history, {});
 
@@ -192,9 +191,7 @@ export default function ChatBotScreen({ route }) {
 
   return (
     <LinearGradient
-      colors={["#4C76D6", "#8E5AAE"]}
-      start={{ x: 0.15, y: 0.1 }}
-      end={{ x: 0.85, y: 0.95 }}
+      colors={["#7c3aed", "#6366f1", "#4c1d95"]}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.safe}>

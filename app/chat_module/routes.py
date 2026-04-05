@@ -5,12 +5,13 @@ import re
 from flask import Blueprint, request, jsonify, session
 from typing import Dict, Any, Optional, Tuple, List
 from app.chat_module.gemini_client import GeminiClient
+from app.auth_module.utils import resolve_authenticated_user_id
 from app.fitness.plan_transformer import (
     mapLLMPlanToStructuredPlan,
     PlanParseError,
     mapDatabasePlanToCalendar,
 )
-from app.fitness_plan_module.service import FitnessPlanService
+from app.fitness.plan_service import FitnessPlanService
 from app.profile_module.service import HealthDataService
 
 chat_bp = Blueprint('chat', __name__)
@@ -25,8 +26,8 @@ FIXED_FIELD_QUESTIONS = [
 
 
 def get_authenticated_user_id() -> Optional[str]:
-    """Get authenticated user ID from session"""
-    return session.get('user_id')
+    """Get authenticated user ID from session or X-User-Id (mobile)."""
+    return resolve_authenticated_user_id()
 
 
 def validate_chat_request(data: Dict[str, Any]) -> Tuple[bool, str]:
@@ -451,10 +452,10 @@ def chat_gemini():
                     return jsonify(onboarding_json), status_code
 
                 # Onboarding completed: invoke existing fitness-plan generation logic.
-                from app.fitness_plan_module.routes import generate_plan as generate_plan_route
+                from app.fitness.plan_generation import generate_two_week_plan_and_save
 
                 try:
-                    generate_plan_route()
+                    generate_two_week_plan_and_save(user_id)
                 except Exception as exc:  # pragma: no cover - defensive
                     print(f"Warning: failed to generate fitness plan for {user_id}: {exc}")
 
@@ -537,7 +538,7 @@ def generate_plan():
     Request body: {} (empty, uses authenticated user's health profile)
     """
     # Import here to avoid circular dependency
-    from app.fitness_plan_module.service import FitnessPlanService
+    from app.fitness.plan_service import FitnessPlanService
     from app.profile_module.service import HealthDataService
     from app.fitness.plan_transformer import mapDatabasePlanToCalendar, PlanParseError
     

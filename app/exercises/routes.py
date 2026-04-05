@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import os
 from werkzeug.utils import secure_filename
 from .openpose import user_output
-from .exercise import Exercise, EXERCISE_PRESETS
 
 load_dotenv()
 
@@ -117,18 +116,6 @@ def analyze_video():
     output['user_id'] = user_id
     output['exercise'] = exercise
     return jsonify(output), 200
-
-# given exercise and standard video, update standard data for exercise
-@exercises_bp.route('/update_standard_data', methods=['POST'])
-def update_standard_data(exercise, video_file):
-    pass
-
-# given exercise, return standard pose data for that exercise
-# only callable AFTER parse_user_video has been called at least once to generate pose estimation data for the exercise
-@exercises_bp.route('/get_user_pose_estimation', methods=['GET'])
-def get_user_pose_estimation():
-    pass
-
 
 
 # TESTING #

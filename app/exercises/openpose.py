@@ -291,11 +291,11 @@ def fetch_standard_data(joint, axis, exercise_name):
 
 def score_func(score):
     if score >= .80 and score <= 1.0:
-        return score ** 2
+        return score ** 1.75
     elif score >= .70 and score < .80:
-        return score ** 3
+        return score ** 2.25
     else:
-        return score ** 4
+        return score ** 2.5
     
 
 # VERY basic insight generation function, can be expanded with more specific feedback based on exercise and joint movement patterns
@@ -410,7 +410,7 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
 
     overall_score, joint_scores, context_dict, user_data, standard_data = FormScore(user_path, exercise, user_id, aws_upload)
     out_string = ""
-    out_string_sections = ['went_well', 'needs_improvement', 'fix_next_time']
+    out_string_sections = ['What_went_well', 'What_needs_improvement', 'What_to_fix_next_time']
     llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
                 f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
                 f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
@@ -425,10 +425,10 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
                 f"You CAN use the scores given in context to give feedback on specific joints."\
                 f"Your response should be a combination of what went well, what went poorly, and what to do next time for fixing."\
                 f"Those three categories shoudl each take ONLY take two bullet points each under the given header sections."\
-                f"Your response should be understandable to any level of lifter (including a beginner with no term knowledge), it should be technical but not too technical that it cannot be understood."\
+                f"Your response should be understandable to any level of lifter (including a beginner with no term knowledge), it should not be too technical that it cannot be understood."\
                 f"AND finally, there should be no formatting the text (italics, bold etc.)."\
                 f"Your response should be in the EXACT following format, enclosed in curly braces, without any additional text: "\
-                f"'went_well': ['bullet point 1', 'bullet point 2'], 'needs_improvement': ['bullet point 1', 'bullet point 2'], 'fix_next_time': ['bullet point 1', 'bullet point 2 ']"
+                f"'What_went_well': ['bullet point 1', 'bullet point 2'], 'What_needs_improvement': ['bullet point 1', 'bullet point 2'], 'What_to_fix_next_time': ['bullet point 1', 'bullet point 2 ']"
 
     client = genai.Client(api_key=GEMINI_API_KEY)
     response = None
@@ -483,6 +483,9 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
         out_string += f"\n{string.replace('_', ' ').title()}:\n"
         for bullet in llm_sections[string]:
             out_string += f"- {bullet}\n"
+
+    out_string += "\nFocus on these insights during your next performance of the exercise. Remember to always engage your core and maintain control for best injury prevention!"
+    out_string += "\n\n\n***Disclaimer: This feedback is generated based on the data provided and may not be 100% accurate. Always consult with a fitness professional for personalized advice and guidance.***"
 
     # out_string += response.text
 
