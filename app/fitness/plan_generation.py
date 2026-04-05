@@ -5,6 +5,7 @@ Plan generation logic (no separate REST blueprint).
 """
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Dict, List, Tuple
 
 from flask import jsonify
@@ -57,7 +58,9 @@ def generate_two_week_plan_and_save(user_id: str) -> Tuple[Any, int]:
         ), 400
 
     gemini = GeminiClient()
-    plan_entries = gemini.generate_two_week_fitness_plan(health_dict)
+    plan_entries = gemini.generate_two_week_fitness_plan(
+        health_dict, plan_start_date=date.today()
+    )
     if not plan_entries:
         return jsonify({"error": "Could not generate plan", "bullet_points": [], "fitness_plans": []}), 422
 
