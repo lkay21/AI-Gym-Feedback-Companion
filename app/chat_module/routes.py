@@ -5,6 +5,7 @@ import re
 from flask import Blueprint, request, jsonify, session
 from typing import Dict, Any, Optional, Tuple, List
 from app.chat_module.gemini_client import GeminiClient
+from app.auth_module.utils import resolve_authenticated_user_id
 from app.fitness.plan_transformer import (
     mapLLMPlanToStructuredPlan,
     PlanParseError,
@@ -25,8 +26,8 @@ FIXED_FIELD_QUESTIONS = [
 
 
 def get_authenticated_user_id() -> Optional[str]:
-    """Get authenticated user ID from session"""
-    return session.get('user_id')
+    """Get authenticated user ID from session or X-User-Id (mobile)."""
+    return resolve_authenticated_user_id()
 
 
 def validate_chat_request(data: Dict[str, Any]) -> Tuple[bool, str]:

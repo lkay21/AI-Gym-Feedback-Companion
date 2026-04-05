@@ -48,13 +48,13 @@ def create_app():
         r"/auth/*": {
             "origins": ["http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081", "http://127.0.0.1:19006", "https://your-alb-url.amazonaws.com"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
+            "allow_headers": ["Content-Type", "Authorization", "X-User-Id"],
             "supports_credentials": True
         },
         r"/api/*": {
             "origins": ["http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081", "http://127.0.0.1:19006", "https://your-alb-url.amazonaws.com"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
+            "allow_headers": ["Content-Type", "Authorization", "X-User-Id"],
             "supports_credentials": True
         }
     })
