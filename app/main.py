@@ -39,25 +39,31 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     # Session configuration
     app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours in seconds
-    app.config['SESSION_COOKIE_SECURE'] = True  # Set to True in production with HTTPS
+    _secure = os.getenv("SESSION_COOKIE_SECURE", "true").strip().lower() in ("1", "true", "yes")
+    app.config['SESSION_COOKIE_SECURE'] = _secure
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-    # Enable CORS for React Native web and mobile apps
-    CORS(app, resources={
-        r"/auth/*": {
-            "origins": ["http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081", "http://127.0.0.1:19006", "https://your-alb-url.amazonaws.com"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-User-Id"],
-            "supports_credentials": True
-        },
-        r"/api/*": {
-            "origins": ["http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081", "http://127.0.0.1:19006", "https://your-alb-url.amazonaws.com"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-User-Id"],
-            "supports_credentials": True
-        }
-    })
+    _default_origins = [
+        "http://localhost:8081",
+        "http://localhost:19006",
+        "http://127.0.0.1:8081",
+        "http://127.0.0.1:19006",
+        "https://your-alb-url.amazonaws.com",
+    ]
+    _cors_raw = os.getenv("CORS_ORIGINS", "").strip()
+    if _cors_raw:
+        cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+    else:
+        cors_origins = _default_origins
+
+    cors_opts = {
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-User-Id"],
+        "supports_credentials": True,
+        "origins": cors_origins,
+    }
+    CORS(app, resources={r"/auth/*": cors_opts, r"/api/*": dict(cors_opts)})
 
     db.init_app(app)
 

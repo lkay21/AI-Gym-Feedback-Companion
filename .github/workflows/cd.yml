@@ -37,9 +37,41 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Force ECS service redeployment
+      # GitHub Secrets are not injected into ECS automatically. Merge into the task definition.
+      # Keys match root .env (see scripts/github_actions_ecs_env.py ALLOWLIST).
+      # Optional ECS_TASK_ENV_JSON overrides / adds keys; per-secret env below wins on same name.
+      - name: Apply app env to ECS task definition and redeploy
+        env:
+          ECS_TASK_ENV_JSON: ${{ secrets.ECS_TASK_ENV_JSON }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DYNAMODB_USER_PROFILES_TABLE: ${{ secrets.DYNAMODB_USER_PROFILES_TABLE }}
+          DYNAMODB_HEALTH_DATA_TABLE: ${{ secrets.DYNAMODB_HEALTH_DATA_TABLE }}
+          SESSION_COOKIE_SECURE: ${{ secrets.SESSION_COOKIE_SECURE }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
         run: |
-          aws ecs update-service \
-            --cluster ${{ secrets.ECS_CLUSTER }} \
-            --service ${{ secrets.ECS_SERVICE }} \
-            --force-new-deployment
+          set -euo pipefail
+          CLUSTER="${{ secrets.ECS_CLUSTER }}"
+          SERVICE="${{ secrets.ECS_SERVICE }}"
+          MERGE_JSON="$(python3 scripts/github_actions_ecs_env.py)"
+          TD_ARN=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].taskDefinition' --output text)
+          aws ecs describe-task-definition --task-definition "$TD_ARN" --query taskDefinition > /tmp/td.json
+          jq \
+            --argjson merge "$MERGE_JSON" \
+            'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+             | (.containerDefinitions[0].environment // []) as $old
+             | ($merge | keys_unsorted) as $mk
+             | .containerDefinitions[0].environment = (
+                 ($old | map(select(.name as $n | ($mk | index($n)) == null)))
+                 + ($merge | to_entries | map({name: .key, value: (.value | tostring)}))
+               )' /tmp/td.json > /tmp/td-new.json
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+            --task-definition "$NEW_ARN" --force-new-deployment
