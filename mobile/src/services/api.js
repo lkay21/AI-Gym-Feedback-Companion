@@ -39,11 +39,12 @@ const getCurrentSessionUserId = async (fallbackUserId = null) => {
 // Helper function to make API requests using fetch (React Native compatible)
 const apiRequest = async (method, endpoint, data = null) => {
   const url = `${API_BASE_URL}${endpoint}`;
+  const storedUserId = await AsyncStorage.getItem('userId');
+  const headers = { 'Content-Type': 'application/json' };
+  if (storedUserId) headers['X-User-Id'] = String(storedUserId);
   const options = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     credentials: 'include',
   };
 
@@ -172,8 +173,11 @@ export const cvAPI = {
       });
     }
 
+    const cvHeaders = {};
+    if (resolvedUserId) cvHeaders["X-User-Id"] = String(resolvedUserId);
     const res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
       method: "POST",
+      headers: cvHeaders,
       body: formData,
       credentials: "include",
       // do NOT set Content-Type manually for multipart in RN
