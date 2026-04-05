@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 import boto3
 from dotenv import load_dotenv
 import os
+import mimetypes
 from werkzeug.utils import secure_filename
 from .openpose import user_output
 
@@ -24,6 +25,17 @@ s3 = boto3.client(
 exercises_bp = Blueprint('exercises', __name__)
 EXERCISES_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEO_IN_DIR = os.path.join(EXERCISES_DIR, 'video_in')
+
+MAX_VIDEO_UPLOAD_SIZE_MB = int(os.getenv('MAX_VIDEO_UPLOAD_SIZE_MB', '50'))
+MAX_VIDEO_UPLOAD_SIZE_BYTES = MAX_VIDEO_UPLOAD_SIZE_MB * 1024 * 1024
+ALLOWED_VIDEO_MIME_TYPES = {
+    'video/mp4',
+    'video/quicktime',
+}
+ALLOWED_VIDEO_EXTENSIONS = {
+    '.mp4',
+    '.mov',
+}
 
 # Might have to map frontend naming to EXERCISE PRESETS
 # IMPORTANT #
@@ -83,6 +95,56 @@ def parse_user_video(video_file, exercise, user_id):
     }
 
 
+def _get_upload_size_bytes(video):
+    stream = video.stream
+    current_position = stream.tell()
+    stream.seek(0, os.SEEK_END)
+    size_bytes = stream.tell()
+    stream.seek(current_position)
+    return size_bytes
+
+
+def _validate_video_upload(video):
+    filename = secure_filename(video.filename or 'upload.mp4')
+
+    extension = os.path.splitext(filename)[1].lower()
+    if extension not in ALLOWED_VIDEO_EXTENSIONS:
+        return {
+            'error': 'unsupported video file extension',
+            'allowed_extensions': sorted(ALLOWED_VIDEO_EXTENSIONS),
+            'received_extension': extension or None,
+        }, 415
+
+    mime_type = (video.mimetype or '').strip().lower()
+    if not mime_type:
+        guessed_mime_type, _ = mimetypes.guess_type(filename)
+        mime_type = (guessed_mime_type or '').lower()
+
+    if mime_type not in ALLOWED_VIDEO_MIME_TYPES:
+        return {
+            'error': 'unsupported video MIME type',
+            'allowed_mime_types': sorted(ALLOWED_VIDEO_MIME_TYPES),
+            'received_mime_type': mime_type or None,
+        }, 415
+
+    size_bytes = _get_upload_size_bytes(video)
+    if size_bytes <= 0:
+        return {
+            'error': 'uploaded video file is empty',
+        }, 400
+
+    if size_bytes > MAX_VIDEO_UPLOAD_SIZE_BYTES:
+        return {
+            'error': 'uploaded video file exceeds maximum allowed size',
+            'max_size_bytes': MAX_VIDEO_UPLOAD_SIZE_BYTES,
+            'received_size_bytes': size_bytes,
+        }, 413
+
+    # Ensure downstream save/read starts from the beginning of the stream.
+    video.stream.seek(0)
+    return None, None
+
+
 @exercises_bp.route('/analyze', methods=['POST'])
 def analyze_video():
     print(f"[CV] /analyze received files={list(request.files.keys())}, form_keys={list(request.form.keys())}")
@@ -104,6 +166,10 @@ def analyze_video():
             'received_files': list(request.files.keys()),
             'received_form_fields': list(request.form.keys()),
         }), 400
+
+    validation_error, status_code = _validate_video_upload(video)
+    if validation_error:
+        return jsonify(validation_error), status_code
 
     os.makedirs(VIDEO_IN_DIR, exist_ok=True)
     filename = secure_filename(video.filename or 'upload.mp4')
