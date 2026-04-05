@@ -155,8 +155,8 @@ export default function DashboardScreen({ navigation, route }) {
                 </View>
 
                 <Text style={styles.formBlurb}>
-                  Upload a video of yourself performing a specific{"\n"}
-                  exercise to know how good your form is!
+                  Upload a video of yourself performing a specific exercise to know how good your form is!{"\n"}
+                  Try to have it only be you in the video, and have a clear view of your full body for best accuracy.
                 </Text>
 
                 <View style={styles.mediaFrame}>

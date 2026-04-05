@@ -1,0 +1,55 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+.pytest_cache/
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+app/instance/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+npm-debug.*
+*.tsbuildinfo
+app/mobile/package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Video files (local CV processing)
+video_in/
+app/exercises/video_out/
+app/exercises/video_in/
