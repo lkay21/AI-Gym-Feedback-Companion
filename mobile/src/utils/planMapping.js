@@ -25,7 +25,15 @@ export const mapPlanToCalendarEvents = (plan) => {
         title: workoutType,
         date: day.date,
         type: isRest ? 'rest' : 'workout',
-        metadata: { exercises },
+        metadata: {
+          exercises,
+          workoutType,
+          estimatedDurationMinutes: day.estimatedDurationMinutes,
+          targetMuscleGroups: Array.isArray(day.targetMuscleGroups)
+            ? day.targetMuscleGroups
+            : [],
+          totalExpectedCaloriesBurnt: day.totalExpectedCaloriesBurnt,
+        },
       });
     });
   });

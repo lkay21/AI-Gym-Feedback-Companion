@@ -7,10 +7,14 @@ Validates:
 - AI call wiring with correct arguments
 """
 
+import json
+
 import pytest
 
 import app.main as main_module
+import app.scaffolding_chat as scaffolding_chat
 from app.database.models import UserProfile
+from app.scaffolding_chat import scaffold_chat_post
 
 
 @pytest.fixture
@@ -40,10 +44,9 @@ def test_chat_api_data_flow(monkeypatch, app):
         captured["api_key"] = api_key
         return "mocked response"
 
-    monkeypatch.setattr(main_module, "get_ai_recommendation", fake_ai_call)
-    monkeypatch.setattr(main_module, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(scaffolding_chat, "get_ai_recommendation", fake_ai_call)
+    monkeypatch.setattr(scaffolding_chat, "GEMINI_API_KEY", "test-key")
 
-    client = app.test_client()
     payload = {
         "message": "How can I improve my squat?",
         "profile": {
@@ -56,7 +59,14 @@ def test_chat_api_data_flow(monkeypatch, app):
         },
     }
 
-    response = client.post("/api/scaffolding/chat", json=payload)
+    with app.app_context():
+        with app.test_request_context(
+            "/",
+            method="POST",
+            data=json.dumps(payload),
+            content_type="application/json",
+        ):
+            response = scaffold_chat_post()
 
     assert response.status_code == 200
     assert response.get_json() == {"response": "mocked response"}

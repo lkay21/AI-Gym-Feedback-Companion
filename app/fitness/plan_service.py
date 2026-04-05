@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from botocore.exceptions import ClientError
 
 from app.dynamodb_module import FITNESS_PLAN_TABLE, get_dynamodb_resource
-from app.fitness_plan_module.models import FitnessPlan
+from app.fitness.plan_models import FitnessPlan
 
 
 def _decimalize(obj: Any) -> Any:

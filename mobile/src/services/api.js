@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { createClient } from '@supabase/supabase-js';
 
 // Update this to your Flask backend URL
 // For iOS Simulator: 'http://localhost:5001'
@@ -9,6 +10,32 @@ const API_BASE_URL = __DEV__
   ? 'http://localhost:5001'
   : 'http://10.0.2.2:5001';
 
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+const getCurrentSessionUserId = async (fallbackUserId = null) => {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (!error) {
+        const sessionUserId = data?.session?.user?.id;
+        if (sessionUserId) return String(sessionUserId);
+      }
+    } catch {
+      // Fall through to the existing app fallback behavior.
+    }
+  }
+
+  if (fallbackUserId) return String(fallbackUserId);
+
+  const storedUserId = await AsyncStorage.getItem('userId');
+  return storedUserId ? String(storedUserId) : null;
+};
+
 // Helper function to make API requests using fetch (React Native compatible)
 const apiRequest = async (method, endpoint, data = null) => {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -17,6 +44,7 @@ const apiRequest = async (method, endpoint, data = null) => {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
   };
 
   if (data) {
@@ -145,9 +173,17 @@ export default { request: apiRequest };
 
 export const cvAPI = {
   analyzeVideo: async ({ uri, exercise, userId, fileName = "upload.mp4", mimeType = "video/mp4" }) => {
+    const resolvedUserId = await getCurrentSessionUserId(userId);
+    if (!resolvedUserId) {
+      return {
+        success: false,
+        error: 'No authenticated user found. Please log in again.',
+      };
+    }
+
     const formData = new FormData();
     formData.append("exercise", String(exercise || "").trim());
-    formData.append("user_id", String(userId));
+    formData.append("user_id", resolvedUserId);
 
     if (Platform.OS === "web") {
       const blobResponse = await fetch(uri);
@@ -161,19 +197,11 @@ export const cvAPI = {
       });
     }
 
-    let res;
-    try {
-      res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
-        method: "POST",
-        body: formData,
-        // do NOT set Content-Type manually for multipart in RN
-      });
-    } catch (networkErr) {
-      return {
-        success: false,
-        error: networkErr?.message || "Network error — check your connection and server URL.",
-      };
-    }
+    const res = await fetch(`${API_BASE_URL}/api/cv/analyze`, {
+      method: "POST",
+      body: formData,
+      // do NOT set Content-Type manually for multipart in RN
+    });
 
     let data = null;
     try {
