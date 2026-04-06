@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, FlatList, Image, Pressable, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, FlatList, Image, Pressable } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -116,7 +117,7 @@ export default function ExerciseSelectScreen({ navigation }) {
       end={{ x: 0.85, y: 0.95 }}
       style={styles.gradient}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.card}>
           <View style={styles.topRow}>
             <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
