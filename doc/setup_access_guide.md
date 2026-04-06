@@ -9,19 +9,24 @@ At the current stage, the application is distributed as an Android APK and conne
 
 - Android device **OR** Android emulator (recommended: Android Studio Emulator)
 - Stable internet connection
+- Activating ECS Cluster (emaill either any member from Team 03 to do so)
 
 ## Accessing the Application
 
 > Note: This build is only supported on Android devices or Android emulators.
 
 1. Download the APK from the link below:  
-   **TODO: INSERT APK DOWNLOAD LINK HERE**
+   https://drive.google.com/file/d/1rG1yTW4ae2AMvmac-gsYrBdyBUMtDu0L/view?usp=drive_link
 
-2. Transfer the APK to your Android device (if downloaded on desktop)
+   Or open this link in your emulator / android device:
 
-3. Locate the APK file on your device (typically in the Downloads folder) and tap to install  
+   https://expo.dev/accounts/aryansri0208/projects/ai-gym-feedback-companion/builds/6af2c73d-398a-4d1f-be6d-f22b2e9e6d58
+
+3. Transfer the APK to your Android device (if downloaded on desktop)
+
+4. Locate the APK file on your device (typically in the Downloads folder) and tap to install  
    - You may need to allow installation from unknown sources when prompted
 
-4. Once installed, open the app from your app drawer
+5. Once installed, open the app from your app drawer
 
-5. Upon launch, you should be directed to the login/signup screen where you can begin using the application
+6. Upon launch, you should be directed to the login/signup screen where you can begin using the application
