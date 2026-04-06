@@ -4,7 +4,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -75,6 +74,7 @@ export default function SnapshotScreen({ navigation }) {
       const ev = mapPlanToCalendarEvents(structuredPlan);
       setEvents(ev);
       setSelectedDate(pickInitialDate(ev));
+      AsyncStorage.setItem("cachedPlanEvents", JSON.stringify(ev)).catch(() => {});
     } catch (e) {
       setError(e.message || "Failed to load plan");
       setEvents([]);
@@ -117,7 +117,6 @@ export default function SnapshotScreen({ navigation }) {
   }, [selectedDate, eventsByDate]);
 
   const exercisesForDay = selectedEvent?.metadata?.exercises || [];
-  const muscleGroups = selectedEvent?.metadata?.targetMuscleGroups || [];
   const workoutLabel =
     selectedEvent?.metadata?.workoutType || selectedEvent?.title || "Workout";
   const durationMinutes =
@@ -246,24 +245,6 @@ export default function SnapshotScreen({ navigation }) {
                         todayTextColor: "rgba(255,255,255,0.92)",
                       }}
                       style={styles.calendar}
-                    />
-                  </View>
-
-                  <Text style={styles.sectionTitle}>Targeted Muscle Groups</Text>
-                  <Text style={styles.muscleList}>
-                    {muscleGroups.length > 0
-                      ? muscleGroups.join(", ")
-                      : exercisesForDay.length === 0
-                        ? "Rest or no exercises — tap a workout day."
-                        : "See exercises below"}
-                  </Text>
-                  <View style={styles.muscleFrame}>
-                    <Image
-                      source={{
-                        uri: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Muscle_anterior_labeled.png/640px-Muscle_anterior_labeled.png",
-                      }}
-                      style={styles.muscleImg}
-                      resizeMode="contain"
                     />
                   </View>
 
