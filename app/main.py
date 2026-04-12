@@ -11,6 +11,7 @@ from app.chat_module.routes import chat_bp as chat_module_bp
 from app.fitness.benchmark_loader import load_fitness_benchmarks
 from app.logger import get_logger
 from app.exercises.routes import exercises_bp
+from app.exercises.models import VideoAsset  # Import VideoAsset so table is created
 
 # Initialize logger
 logger = get_logger(__name__)
