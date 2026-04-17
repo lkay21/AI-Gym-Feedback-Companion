@@ -23,6 +23,29 @@ This document freezes the HTTP surface of the Flask app as of the inventory pass
 | POST | `/api/chat/plan` | `PlanScreen.js`, `SnapshotScreen.jsx` via `chatAPI.generatePlan` |
 | POST | `/api/cv/analyze` | `RecordVideoScreen.jsx` via `cvAPI.analyzeVideo` |
 
+### Upload endpoint limits
+
+`POST /api/cv/analyze` is rate-limited with Flask-Limiter using both identities:
+
+- Authenticated user key: `X-User-Id` / resolved session identity (default `10 per minute`)
+- IP address key: client remote IP (default `30 per minute`)
+
+Environment variables:
+
+- `CV_UPLOAD_USER_RATE_LIMIT` (for example: `10 per minute`)
+- `CV_UPLOAD_IP_RATE_LIMIT` (for example: `30 per minute`)
+
+When a request exceeds either limit, the API returns HTTP `429` with:
+
+```json
+{
+	"error": "Rate limit exceeded",
+	"detail": "<limit description>"
+}
+```
+
+Violations are logged with request path, method, user identity, IP, and exceeded limit.
+
 `chatAPI.sendMessage` in `api.js` maps to `POST /api/chat` but **no screen imports it**; only `sendChatbotMessage` is used. That is unused client surface, not proof the backend route is unused globally (web uses `POST /api/chat`).
 
 ---

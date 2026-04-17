@@ -28,8 +28,12 @@ exercises_bp = Blueprint('exercises', __name__)
 EXERCISES_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEO_IN_DIR = os.path.join(EXERCISES_DIR, 'video_in')
 
-CV_UPLOAD_USER_RATE_LIMIT = os.getenv('CV_UPLOAD_USER_RATE_LIMIT', '10 per minute')
-CV_UPLOAD_IP_RATE_LIMIT = os.getenv('CV_UPLOAD_IP_RATE_LIMIT', '30 per minute')
+def _get_cv_upload_user_rate_limit():
+    return os.getenv('CV_UPLOAD_USER_RATE_LIMIT', '10 per minute')
+
+
+def _get_cv_upload_ip_rate_limit():
+    return os.getenv('CV_UPLOAD_IP_RATE_LIMIT', '30 per minute')
 
 # Might have to map frontend naming to EXERCISE PRESETS
 # IMPORTANT #
@@ -100,8 +104,8 @@ def _upload_user_rate_limit_key():
 
 
 @exercises_bp.route('/analyze', methods=['POST'])
-@limiter.limit(CV_UPLOAD_IP_RATE_LIMIT, key_func=get_remote_address)
-@limiter.limit(CV_UPLOAD_USER_RATE_LIMIT, key_func=_upload_user_rate_limit_key)
+@limiter.limit(_get_cv_upload_ip_rate_limit, key_func=get_remote_address)
+@limiter.limit(_get_cv_upload_user_rate_limit, key_func=_upload_user_rate_limit_key)
 def analyze_video():
     print(f"[CV] /analyze received files={list(request.files.keys())}, form_keys={list(request.form.keys())}")
 
