@@ -4,17 +4,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar } from "react-native-calendars";
 import MenuDropdown from "../components/MenuDropdown";
 import { chatAPI } from "../services/api";
@@ -75,6 +74,7 @@ export default function SnapshotScreen({ navigation }) {
       const ev = mapPlanToCalendarEvents(structuredPlan);
       setEvents(ev);
       setSelectedDate(pickInitialDate(ev));
+      AsyncStorage.setItem("cachedPlanEvents", JSON.stringify(ev)).catch(() => {});
     } catch (e) {
       setError(e.message || "Failed to load plan");
       setEvents([]);
@@ -117,7 +117,6 @@ export default function SnapshotScreen({ navigation }) {
   }, [selectedDate, eventsByDate]);
 
   const exercisesForDay = selectedEvent?.metadata?.exercises || [];
-  const muscleGroups = selectedEvent?.metadata?.targetMuscleGroups || [];
   const workoutLabel =
     selectedEvent?.metadata?.workoutType || selectedEvent?.title || "Workout";
   const durationMinutes =
@@ -153,17 +152,18 @@ export default function SnapshotScreen({ navigation }) {
       colors={["#7c3aed", "#6366f1", "#4c1d95"]}
       style={styles.bg}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={styles.card}>
-            <View style={styles.topBar}>
-              <Text style={styles.topLeftLabel}>Today's Snapshot</Text>
-              <MenuDropdown />
-            </View>
+          {/* Header outside the card: overflow:hidden on the card breaks Android touches on in-card controls */}
+          <View style={styles.outerHeader}>
+            <Text style={styles.topLeftLabel}>Today's Snapshot</Text>
+            <MenuDropdown />
+          </View>
 
+          <View style={styles.card}>
             {userId ? (
               <Text style={styles.userHint} numberOfLines={1}>
                 User: {userId}
@@ -171,8 +171,11 @@ export default function SnapshotScreen({ navigation }) {
             ) : null}
 
             <ScrollView
+              style={{ flex: 1 }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
             >
               <Text style={styles.title}>Workout Snapshot</Text>
               {planName ? (
@@ -249,24 +252,6 @@ export default function SnapshotScreen({ navigation }) {
                     />
                   </View>
 
-                  <Text style={styles.sectionTitle}>Targeted Muscle Groups</Text>
-                  <Text style={styles.muscleList}>
-                    {muscleGroups.length > 0
-                      ? muscleGroups.join(", ")
-                      : exercisesForDay.length === 0
-                        ? "Rest or no exercises — tap a workout day."
-                        : "See exercises below"}
-                  </Text>
-                  <View style={styles.muscleFrame}>
-                    <Image
-                      source={{
-                        uri: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Muscle_anterior_labeled.png/640px-Muscle_anterior_labeled.png",
-                      }}
-                      style={styles.muscleImg}
-                      resizeMode="contain"
-                    />
-                  </View>
-
                   <View style={styles.sessionCard}>
                     <Text style={styles.sessionTitle}>
                       {selectedDate
@@ -329,7 +314,7 @@ export default function SnapshotScreen({ navigation }) {
               )}
             </ScrollView>
 
-            <View style={styles.promptWrap}>
+            <View style={styles.promptWrap} pointerEvents="box-none">
               <View style={styles.promptPill}>
                 <TextInput
                   value={prompt}
@@ -356,10 +341,22 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   bg: { flex: 1 },
 
+  outerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 4,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+    zIndex: 20,
+    elevation: 20,
+  },
+
   card: {
     flex: 1,
     marginHorizontal: 16,
-    marginTop: 10,
+    marginTop: 0,
     marginBottom: 14,
     borderRadius: 28,
     paddingTop: 10,
@@ -370,13 +367,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 6,
-    paddingBottom: 8,
-  },
   topLeftLabel: {
     color: "rgba(255,255,255,0.60)",
     fontSize: 12,
