@@ -8,12 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { cvAPI } from "../services/api";
 
 export default function UploadExerciseScreen({ navigation, route }) {
@@ -110,13 +110,14 @@ export default function UploadExerciseScreen({ navigation, route }) {
   const step2Done = !!videoFile;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <LinearGradient
-        colors={["#4C76D6", "#8E5AAE"]}
-        start={{ x: 0.15, y: 0.1 }}
-        end={{ x: 0.85, y: 0.95 }}
-        style={styles.gradient}
-      >
+    <LinearGradient
+      colors={["#4C76D6", "#8E5AAE"]}
+      start={{ x: 0.15, y: 0.1 }}
+      end={{ x: 0.85, y: 0.95 }}
+      style={styles.gradient}
+    >
+      {/* Must close </SafeAreaView> before </LinearGradient> (SafeAreaView is inside the gradient). */}
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.shell}>
           <ScrollView
             style={{ flex: 1 }}
@@ -288,14 +289,14 @@ export default function UploadExerciseScreen({ navigation, route }) {
             </Pressable>
           </View>
         </View>
-      </LinearGradient>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#4C76D6" },
   gradient: { flex: 1 },
+  safe: { flex: 1, backgroundColor: "transparent" },
 
   shell: {
     flex: 1,

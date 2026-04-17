@@ -312,11 +312,77 @@ def generate_insights(resampled_example_x, resampled_user_x, resampled_example_y
 
     return insights
 
+def mae(val1, val2):
+        return np.mean(np.array(val1) - np.array(val2))
+    
+def check_high_order_kinematics(
+        example_x_vel, 
+        example_y_vel, 
+        example_x_acc, 
+        example_y_acc, 
+        user_x_vel, 
+        user_y_vel, 
+        user_x_acc, 
+        user_y_acc
+):
+        
+    higher_order_dict = {}
+    higher_order_insights = {}
+
+
+    # velocity check (1D array: use slicing)
+    half_ex = len(example_x_vel) // 2
+    half_ey = len(example_y_vel) // 2
+    half_ux = len(user_x_vel) // 2
+    half_uy = len(user_y_vel) // 2
+
+    higher_order_dict["example_x_vel_up"] = np.mean(example_x_vel[:half_ex])
+    higher_order_dict["example_x_vel_down"] = np.mean(example_x_vel[half_ex:])
+    higher_order_dict["example_y_vel_up"] = np.mean(example_y_vel[:half_ey])
+    higher_order_dict["example_y_vel_down"] = np.mean(example_y_vel[half_ey:])
+    higher_order_dict["user_x_vel_up"] = np.mean(user_x_vel[:half_ux])
+    higher_order_dict["user_x_vel_down"] = np.mean(user_x_vel[half_ux:])
+    higher_order_dict["user_y_vel_up"] = np.mean(user_y_vel[:half_uy])
+    higher_order_dict["user_y_vel_down"] = np.mean(user_y_vel[half_uy:])
+
+    # acceleration check (1D array: use slicing)
+    half_exa = len(example_x_acc) // 2
+    half_eya = len(example_y_acc) // 2
+    half_uxa = len(user_x_acc) // 2
+    half_uya = len(user_y_acc) // 2
+
+    higher_order_dict["example_x_acc_up"] = np.mean(example_x_acc[:half_exa])
+    higher_order_dict["example_x_acc_down"] = np.mean(example_x_acc[half_exa:])
+    higher_order_dict["example_y_acc_up"] = np.mean(example_y_acc[:half_eya])
+    higher_order_dict["example_y_acc_down"] = np.mean(example_y_acc[half_eya:])
+    higher_order_dict["user_x_acc_up"] = np.mean(user_x_acc[:half_uxa])
+    higher_order_dict["user_x_acc_down"] = np.mean(user_x_acc[half_uxa:])
+    higher_order_dict["user_y_acc_up"] = np.mean(user_y_acc[:half_uya])
+    higher_order_dict["user_y_acc_down"] = np.mean(user_y_acc[half_uya:])
+
+    for axis in ["x", "y"]:
+        for direction in ["up", "down"]:
+            for metric in ["vel", "acc"]:
+
+                original_ = higher_order_dict[f"example_{axis}_{metric}_{direction}"]
+                user_ = higher_order_dict[f"user_{axis}_{metric}_{direction}"]
+
+                mae_ = round(float(mae(original_, user_)), 2)
+
+                # print(f"MAE for {axis} {metric} {direction}: {mae_}")
+
+            if mae_ > 0.2:
+                higher_order_insights[f"{axis}_{metric}_{direction}"] = mae_
+
+    return higher_order_insights
+    
+
 def FormScore(user_path, exercise, user_id, aws_upload=False):
 
     context_dict = {}
     user_data = {}
     standard_data = {}
+    high_order_insights = {}
         
     exercise = exercise.replace(" ", "_").lower()
     exercise_obj = ex.Exercise.from_preset(exercise)
@@ -330,7 +396,11 @@ def FormScore(user_path, exercise, user_id, aws_upload=False):
     user_vid = os.path.join(APP_DIR, "video_in", user_path)
 
     example_xs, example_ys = {}, {}
+    example_xs_1st, example_ys_1st = {}, {}
+    example_xs_2nd, example_ys_2nd = {}, {}
     user_xs, user_ys = {}, {}
+    user_xs_1st, user_ys_1st = {}, {}
+    user_xs_2nd, user_ys_2nd = {}, {}
 
     frame_vals = {}
     joint_group_nums = []
@@ -355,8 +425,16 @@ def FormScore(user_path, exercise, user_id, aws_upload=False):
     for joint in frame_vals.keys():
         user_xs[joint] = exercise_obj.x_metrics[joint + " position"]
         user_ys[joint] = exercise_obj.y_metrics[joint + " position"]
+        user_xs_1st[joint] = exercise_obj.x_metrics[joint + " velocity"]
+        user_ys_1st[joint] = exercise_obj.y_metrics[joint + " velocity"]
+        user_xs_2nd[joint] = exercise_obj.x_metrics[joint + " acceleration"]
+        user_ys_2nd[joint] = exercise_obj.y_metrics[joint + " acceleration"]
         example_xs[joint] = fetch_standard_data(joint, "x", exercise)
         example_ys[joint] = fetch_standard_data(joint, "y", exercise)
+        example_xs_1st[joint] = np.gradient(example_xs[joint], 1/fps)
+        example_ys_1st[joint] = np.gradient(example_ys[joint], 1/fps)
+        example_xs_2nd[joint] = np.gradient(example_xs_1st[joint], 1/fps)
+        example_ys_2nd[joint] = np.gradient(example_ys_1st[joint], 1/fps)
         # print(f"Joint: {joint}")
         # print(frame_vals[joint])
         # print("\n")
@@ -371,6 +449,17 @@ def FormScore(user_path, exercise, user_id, aws_upload=False):
         user_x = user_xs[joint]
         user_y = user_ys[joint]
 
+        high_order_insights[joint] = check_high_order_kinematics(
+                                        example_xs_1st[joint], 
+                                        example_ys_1st[joint],
+                                        example_xs_2nd[joint],
+                                        example_ys_2nd[joint],
+                                        user_xs_1st[joint],
+                                        user_ys_1st[joint],
+                                        user_xs_2nd[joint],
+                                        user_ys_2nd[joint],
+                                    )
+        
         user_data[joint] = {"x": user_x, "y": user_y}
         standard_data[joint] = {"x": example_x, "y": example_y}
 
@@ -400,15 +489,16 @@ def FormScore(user_path, exercise, user_id, aws_upload=False):
     overall_score = np.mean(list(joint_scores.values()))
 
     print(f"\nOverall Form Score for {exercise_obj.name}: {overall_score * 100} percent\n")
+    # print(f"High Order Kinematics Insights: {high_order_insights}\n")
 
-    return overall_score, joint_scores, context_dict, user_data, standard_data
+    return overall_score, joint_scores, context_dict, user_data, standard_data, high_order_insights
 
 
 def user_output(user_path, exercise, user_id, aws_upload=False):
 
     retry_codes = {408, 409, 425, 429, 500, 502, 503, 504}
 
-    overall_score, joint_scores, context_dict, user_data, standard_data = FormScore(user_path, exercise, user_id, aws_upload)
+    overall_score, joint_scores, context_dict, user_data, standard_data, high_order = FormScore(user_path, exercise, user_id, aws_upload)
     out_string = ""
     out_string_sections = ['What_went_well', 'What_needs_improvement', 'What_to_fix_next_time']
     llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
@@ -421,8 +511,9 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
                 f"Insights: {context_dict}\n"\
                 f"User Joint Data: {user_data}\n"\
                 f"Standard Joint Data: {standard_data}\n"\
+                f"High Order Kinematics Insights (these are velocity and acceleration MAE between the user and standard forms for each joint for each axis), acc represents acceleration and vel represents velocity: {high_order}\n"\
                 f"Here are the rules for your output. You DO NOT output any score metrics given to you in context."\
-                f"You CAN use the scores given in context to give feedback on specific joints."\
+                f"You CAN use the scores given in context to give feedback on specific joints and specific joint metrics."\
                 f"Your response should be a combination of what went well, what went poorly, and what to do next time for fixing."\
                 f"Those three categories shoudl each take ONLY take two bullet points each under the given header sections."\
                 f"Your response should be understandable to any level of lifter (including a beginner with no term knowledge), it should not be too technical that it cannot be understood."\
@@ -433,38 +524,43 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
     client = genai.Client(api_key=GEMINI_API_KEY)
     response = None
 
-    for i in range(LLM_RETRY):
+    try: 
+        for i in range(LLM_RETRY):
 
-        print (f"Attempt {i + 1} of {LLM_RETRY} to call LLM API...")
-        
-        try:
-            response = client.models.generate_content(
-                model="gemini-3-flash-preview",
-                contents=llm_prompt,
-            )
-            break
-        except genai_errors.APIError as err:
-            error_code = getattr(err, "code", None)
-            if error_code not in retry_codes or i == (LLM_RETRY - 1):
-                raise RuntimeError(
-                    f"LLM API call failed (code={error_code}) after {i + 1} attempt(s): {err}"
-                ) from err
+            print (f"Attempt {i + 1} of {LLM_RETRY} to call LLM API...")
+            
+            try:
+                response = client.models.generate_content(
+                    model="gemini-3-flash-preview",
+                    contents=llm_prompt,
+                )
+                break
+            except genai_errors.APIError as err:
+                error_code = getattr(err, "code", None)
+                if error_code not in retry_codes or i == (LLM_RETRY - 1):
+                    raise RuntimeError(
+                        f"LLM API call failed (code={error_code}) after {i + 1} attempt(s): {err}"
+                    ) from err
 
-            backoff_seconds = (0.5 * (2 ** i)) + random.uniform(0.0, 0.25)
-            print(f"LLM API call failed with error code {error_code}. Retrying in {backoff_seconds:.2f}s...")
-            time.sleep(backoff_seconds)
-        except (TimeoutError, ConnectionError) as err:
-            if i == (LLM_RETRY - 1):
-                raise RuntimeError(
-                    f"LLM API call failed after {i + 1} attempt(s): {err}"
-                ) from err
+                backoff_seconds = (0.5 * (2 ** i)) + random.uniform(0.0, 0.25)
+                print(f"LLM API call failed with error code {error_code}. Retrying in {backoff_seconds:.2f}s...")
+                time.sleep(backoff_seconds)
+            except (TimeoutError, ConnectionError) as err:
+                if i == (LLM_RETRY - 1):
+                    raise RuntimeError(
+                        f"LLM API call failed after {i + 1} attempt(s): {err}"
+                    ) from err
 
-            backoff_seconds = (0.5 * (2 ** i)) + random.uniform(0.0, 0.25)
-            print(f"Transient LLM transport error. Retrying in {backoff_seconds:.2f}s...")
-            time.sleep(backoff_seconds)
+                backoff_seconds = (0.5 * (2 ** i)) + random.uniform(0.0, 0.25)
+                print(f"Transient LLM transport error. Retrying in {backoff_seconds:.2f}s...")
+                time.sleep(backoff_seconds)
 
-    if response is None:
-        raise RuntimeError("LLM API call returned no response after retries.")
+        if response is None:
+            raise RuntimeError("LLM API call returned no response after retries.")
+    except Exception as err:
+        print(f"Error during LLM API call: {err}")
+        response = "Error in generating further insight, please try again later. \n"
+        raise RuntimeError("Failed to generate feedback from LLM API.") from err
                 
 
     if overall_score >= 0.9:
@@ -559,44 +655,44 @@ def get_standard_pose(example_path, exercise, aws_upload=False):
 
 if __name__ == "__main__":
 
-    # exercise_str = "bicep_curl"
+    exercise_str = "bicep_curl"
     # # exercise_str_2 = "lateral_raise"
     # example_vid = "example.mp4"
     # example_vid_2 = "lat_raise_stand.mp4"
-    # rename_vid = "rename.mp4"
+    rename_vid = "rename.mp4"
     # rename_vid_2 = "lat_raise_bad.mp4"
 
     # exercise_str = "shoulder_press"
     # example_vid = "shoulder_press.mov"
 
-    train_exercises = ['bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
-                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
-                 'shoulder_press'
-                ]
-    train_vids = [
-            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
-            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
-            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV'
-           ]
+    # train_exercises = ['bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+    #              'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+    #              'shoulder_press'
+    #             ]
+    # train_vids = [
+    #         'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+    #         'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+    #         'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV'
+    #        ]
     
-    test_exercises = ["lateral_raise", "lateral_raise", "bicep_curl"]
-    test_vids = ["lat_raise_good.mp4", "lat_raise_bad.mp4", "rename.mp4"]
+    # test_exercises = ["lateral_raise", "lateral_raise", "bicep_curl"]
+    # test_vids = ["lat_raise_good.mp4", "lat_raise_bad.mp4", "rename.mp4"]
     
-    assert len(train_exercises) == len(train_vids), "Mismatch between exercises and video files"
-    assert len(test_exercises) == len(test_vids), "Mismatch between exercises and video files"
+    # assert len(train_exercises) == len(train_vids), "Mismatch between exercises and video files"
+    # assert len(test_exercises) == len(test_vids), "Mismatch between exercises and video files"
 
-    # if test == 0, training
-    test = 0
+    # # if test == 0, training
+    # test = 0
 
-    if not(test):
-        for exercise, vid in zip(train_exercises, train_vids):
-            get_standard_pose(vid, exercise)
-    else:
-        for exercise, vid in zip(test_exercises, test_vids):
-            overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(vid, exercise)
-            print(f"Overall Score: {overall_score}")
-            print(f"\nFeedback for {exercise}:\n")
-            print(out_string)
+    # if not(test):
+    #     for exercise, vid in zip(train_exercises, train_vids):
+    #         get_standard_pose(vid, exercise)
+    # else:
+    #     for exercise, vid in zip(test_exercises, test_vids):
+    #         overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(vid, exercise)
+    #         print(f"Overall Score: {overall_score}")
+    #         print(f"\nFeedback for {exercise}:\n")
+    #         print(out_string)
 
 
     # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
@@ -609,8 +705,10 @@ if __name__ == "__main__":
     # get_standard_pose(example_vid, exercise_str)
     # get_standard_pose(example_vid_2, exercise_str_2)
 
-    # user_out = user_output(rename_vid, exercise_str)
-    # print(user_out)
+    overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(rename_vid, exercise_str, "test_user", aws_upload=False)
+    print(f"Overall Score: {overall_score}")
+    print(f"\nFeedback for {exercise_str}:\n")
+    print(out_string)
 
     # overall, joints, context_dict = FormScore(rename_vid, exercise_str)
 
