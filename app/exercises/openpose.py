@@ -6,8 +6,8 @@ import ast
 import importlib
 from dotenv import load_dotenv
 import numpy as np
-import exercise as ex
-# from . import exercise as ex
+# import exercise as ex
+from . import exercise as ex
 import time
 from sklearn.metrics import root_mean_squared_error
 from scipy.interpolate import interp1d
