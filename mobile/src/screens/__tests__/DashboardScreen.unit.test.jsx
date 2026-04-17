@@ -20,20 +20,13 @@ describe("DashboardScreen unit tests", () => {
     jest.clearAllMocks();
   });
 
-  it("renders weekly workout plan text correctly", () => {
+  it("renders today's plan card correctly", () => {
     const { getByText } = render(
       <DashboardScreen navigation={mockNavigation} />
     );
 
     expect(getByText("Fitness Dashboard")).toBeTruthy();
-    expect(getByText("Weekly Workout Plan")).toBeTruthy();
-    expect(getByText("12/9/2025 - 12/15/2025")).toBeTruthy();
-    expect(getByText("Monday - ")).toBeTruthy();
-    expect(getByText("Biceps, Triceps, Shoulders")).toBeTruthy();
-    expect(getByText("Wednesday - ")).toBeTruthy();
-    expect(getByText("Glutes, Quads")).toBeTruthy();
-    expect(getByText("Friday - ")).toBeTruthy();
-    expect(getByText("Abs, Cardio")).toBeTruthy();
+    expect(getByText("Today's Plan")).toBeTruthy();
   });
 
   it("clears the chat input and navigates after valid send", () => {

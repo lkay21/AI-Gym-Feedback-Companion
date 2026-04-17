@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
@@ -319,8 +318,10 @@ export default function SignupScreen({ navigation }) {
                 </View>
 
                 <TouchableOpacity
-                  style={styles.googleButton}
-                  onPress={() => Alert.alert('Coming Soon', 'Google signup will be available soon')}
+                  style={[styles.googleButton, styles.googleButtonDisabled]}
+                  disabled
+                  accessibilityState={{ disabled: true }}
+                  accessibilityLabel="Sign up with Google (not available yet)"
                 >
                   <View style={styles.googleButtonContent}>
                     <View style={styles.googleLogo}>
@@ -482,6 +483,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
     height: 52,
+  },
+  googleButtonDisabled: {
+    opacity: 0.5,
   },
   googleButtonContent: {
     flexDirection: 'row',

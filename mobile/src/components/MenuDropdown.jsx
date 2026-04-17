@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, Modal } from "react-native";
+import { TouchableOpacity } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
@@ -25,11 +26,18 @@ export default function MenuDropdown() {
   };
 
   return (
-    <View>
-      <Pressable style={styles.menuBtn} onPress={() => setOpen(true)}>
+    // RNGH TouchableOpacity: works reliably with @react-navigation/stack gestures on Android.
+    // Outer View: avoid native view collapse removing the hit target in flex rows.
+    <View collapsable={false}>
+      <TouchableOpacity
+        style={styles.menuBtn}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.75}
+        hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+      >
         <Text style={styles.menuText}>Menu</Text>
         <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.9)" />
-      </Pressable>
+      </TouchableOpacity>
 
       <Modal
         visible={open}

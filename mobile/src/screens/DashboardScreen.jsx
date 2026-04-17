@@ -20,14 +20,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import MenuDropdown from "../components/MenuDropdown";
 
-const WEEK_RANGE = "12/9/2025 - 12/15/2025";
-
-const WEEKLY_PLAN = [
-  { day: "Monday", text: "Biceps, Triceps, Shoulders" },
-  { day: "Wednesday", text: "Glutes, Quads" },
-  { day: "Friday", text: "Abs, Cardio" },
-];
-
 const DEFAULT_CV_RESULT = {
   score: null,
   insight: "Upload a video to receive form insights.",
@@ -116,21 +108,31 @@ export default function DashboardScreen({ navigation, route }) {
   const [cvResult, setCvResult] = useState(DEFAULT_CV_RESULT);
   const [tipIndex, setTipIndex] = useState(0);
   const [username, setUsername] = useState("");
+  const [todayEvent, setTodayEvent] = useState(undefined); // undefined = loading, null = no plan
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
       try {
-        const [rawCV, storedUsername] = await Promise.all([
+        const [rawCV, storedUsername, rawPlan] = await Promise.all([
           AsyncStorage.getItem("lastCVResult"),
           AsyncStorage.getItem("username"),
+          AsyncStorage.getItem("cachedPlanEvents"),
         ]);
         if (!isMounted) return;
         if (rawCV) setCvResult((prev) => ({ ...prev, ...JSON.parse(rawCV) }));
         if (storedUsername) setUsername(storedUsername);
+        if (rawPlan) {
+          const today = new Date().toISOString().split("T")[0];
+          const events = JSON.parse(rawPlan);
+          const event = events.find((e) => e.date === today) || null;
+          setTodayEvent(event);
+        } else {
+          setTodayEvent(null);
+        }
       } catch {
-        // keep defaults
+        setTodayEvent(null);
       }
     };
     loadData();
@@ -211,26 +213,58 @@ export default function DashboardScreen({ navigation, route }) {
                 <Text style={styles.greetingSub}>Fitness Dashboard</Text>
               </View>
 
-              {/* ── Weekly Workout Plan ── */}
+              {/* ── Today: Rest vs Train ── */}
               <Pressable
                 style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
                 onPress={() => navigation.navigate("Snapshot")}
                 android_ripple={{ color: "rgba(167,139,250,0.25)", borderless: false }}
               >
                 <View style={styles.cardHeaderRow}>
-                  <Text style={styles.cardTitle}>Weekly Workout Plan</Text>
+                  <Text style={styles.cardTitle}>Today's Plan</Text>
                   <Ionicons name="chevron-forward-circle" size={24} color="rgba(220,210,255,1)" />
                 </View>
-                <Text style={styles.cardSub}>{WEEK_RANGE}</Text>
-                <View style={{ height: 10 }} />
-                {WEEKLY_PLAN.map((row) => (
-                  <View key={row.day} style={styles.planRow}>
-                    <Text style={styles.planDay}>{row.day} - </Text>
-                    <Text style={styles.planText}>{row.text}</Text>
-                  </View>
-                ))}
-                <View style={styles.shoeIcon}>
-                  <Ionicons name="walk-outline" size={52} color="rgba(195, 220, 255, 0.85)" />
+
+                {todayEvent === undefined ? (
+                  /* loading */
+                  <Text style={styles.cardSub}>Loading…</Text>
+                ) : todayEvent === null ? (
+                  /* no plan cached */
+                  <>
+                    <Text style={styles.cardSub}>No plan found</Text>
+                    <Text style={styles.planHint}>Generate your plan in Chat first</Text>
+                  </>
+                ) : todayEvent.type === "rest" ? (
+                  /* rest day */
+                  <>
+                    <View style={styles.trainBadgeRest}>
+                      <Ionicons name="bed-outline" size={16} color="#6EE7B7" />
+                      <Text style={[styles.trainBadgeText, { color: "#6EE7B7" }]}>Rest Day</Text>
+                    </View>
+                    <Text style={styles.planHint}>Recovery — light movement or rest today</Text>
+                  </>
+                ) : (
+                  /* workout day */
+                  <>
+                    <View style={styles.trainBadgeWorkout}>
+                      <Ionicons name="barbell-outline" size={16} color="#C4B5FD" />
+                      <Text style={[styles.trainBadgeText, { color: "#C4B5FD" }]}>Train Day</Text>
+                    </View>
+                    {todayEvent.metadata?.targetMuscleGroups?.length > 0 && (
+                      <Text style={styles.planMuscles}>
+                        {todayEvent.metadata.targetMuscleGroups.join(" · ")}
+                      </Text>
+                    )}
+                    {todayEvent.metadata?.estimatedDurationMinutes && (
+                      <Text style={styles.planHint}>
+                        ~{todayEvent.metadata.estimatedDurationMinutes} min · {todayEvent.title}
+                      </Text>
+                    )}
+                  </>
+                )}
+
+                <View style={styles.viewPlanRow}>
+                  <Text style={styles.viewPlanText}>Tap to see full plan</Text>
+                  <Ionicons name="arrow-forward" size={12} color="rgba(255,255,255,0.45)" />
                 </View>
               </Pressable>
 
@@ -453,15 +487,64 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  planRow: {
+  trainBadgeRest: {
     flexDirection: "row",
-    justifyContent: "center",
-    marginVertical: 4,
-    paddingHorizontal: 6,
+    alignItems: "center",
+    alignSelf: "center",
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: "rgba(52,211,153,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(52,211,153,0.35)",
+    marginTop: 8,
+    marginBottom: 6,
   },
-  planDay: { color: "#fff", fontWeight: "900", fontSize: 12 },
-  planText: { color: "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 12 },
-  shoeIcon: { position: "absolute", right: 12, bottom: 8, opacity: 0.9 },
+  trainBadgeWorkout: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: "rgba(167,139,250,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.35)",
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  trainBadgeText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  planMuscles: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  planHint: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  viewPlanRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    marginTop: 10,
+  },
+  viewPlanText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 11,
+    fontWeight: "700",
+  },
 
   formHeader: {
     flexDirection: "row",
