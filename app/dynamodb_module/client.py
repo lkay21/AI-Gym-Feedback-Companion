@@ -15,24 +15,6 @@ else:
 
 # AWS Configuration
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-# Validate AWS credentials are loaded
-def _validate_aws_credentials():
-    """Validate that AWS credentials are available"""
-    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
-        env_file_path = project_root / '.env'
-        raise ValueError(
-            f"AWS credentials not found!\n"
-            f"Please add the following to your .env file at: {env_file_path}\n"
-            f"  AWS_REGION=us-east-1\n"
-            f"  AWS_ACCESS_KEY_ID=your_access_key_id\n"
-            f"  AWS_SECRET_ACCESS_KEY=your_secret_access_key\n"
-            f"\nAlternatively, configure AWS CLI credentials:\n"
-            f"  aws configure\n"
-            f"Or set environment variables directly."
-        )
 
 # DynamoDB Table Names
 USER_PROFILES_TABLE = os.getenv("DYNAMODB_USER_PROFILES_TABLE", "user_profiles")
@@ -41,34 +23,16 @@ FITNESS_PLAN_TABLE = os.getenv("DYNAMODB_FITNESS_PLAN_TABLE", "fitness_plan")
 
 def get_dynamodb_client():
     """Get DynamoDB client instance"""
-    if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-        return boto3.client(
-            'dynamodb',
-            region_name=AWS_REGION,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-        )
-    else:
-        # Use default credentials (IAM role, environment, or ~/.aws/credentials)
-        return boto3.client('dynamodb', region_name=AWS_REGION)
+    # IAM role-based authentication is used here via the ECS task role.
+    return boto3.client('dynamodb', region_name=AWS_REGION)
 
 def get_dynamodb_resource():
     """Get DynamoDB resource instance (higher-level API)"""
-    if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-        return boto3.resource(
-            'dynamodb',
-            region_name=AWS_REGION,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-        )
-    else:
-        # Use default credentials (IAM role, environment, or ~/.aws/credentials)
-        return boto3.resource('dynamodb', region_name=AWS_REGION)
+    # IAM role-based authentication is used here via the ECS task role.
+    return boto3.resource('dynamodb', region_name=AWS_REGION)
 
 def create_tables_if_not_exist():
     """Create DynamoDB tables if they don't exist"""
-    # Validate credentials before attempting to create tables
-    _validate_aws_credentials()
     dynamodb = get_dynamodb_resource()
     
     # User Profiles Table

@@ -31,16 +31,13 @@ from pymediainfo import MediaInfo
 
 load_dotenv()
     
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LLM_RETRY = 3
 
+# IAM role-based authentication is used here via the ECS task role.
 s3 = boto3.client(
     's3',
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
     region_name=REGION)
 
 bucket_name = 'fitness-form-videos'

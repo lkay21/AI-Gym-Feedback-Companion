@@ -9,16 +9,13 @@ from .openpose import user_output
 
 load_dotenv()
 
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
 
 bucket_name = 'fitness-form-videos'
 
+# IAM role-based authentication is used here via the ECS task role.
 s3 = boto3.client(
     's3',
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
     region_name=REGION)
 
 exercises_bp = Blueprint('exercises', __name__)

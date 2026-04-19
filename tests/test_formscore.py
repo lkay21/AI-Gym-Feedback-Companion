@@ -15,14 +15,10 @@ from app.exercises.exercise import Exercise, EXERCISE_PRESETS
 from app.exercises.routes import parse_user_video
 from app.exercises.openpose import generate_pose, fetch_standard_data, score_func, FormScore, user_output
 
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
 
 s3 = boto3.client(
     's3',
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
     region_name=REGION
     )
 
@@ -30,8 +26,6 @@ s3 = boto3.client(
 class TestS3(unittest.TestCase):
 
     # def test_AWS_credentials_present(self):
-    #     self.assertIsNotNone(os.getenv('AWS_ACCESS_KEY_ID'))
-    #     self.assertIsNotNone(os.getenv('AWS_SECRET_ACCESS_KEY'))
     #     self.assertIsNotNone(os.getenv('AWS_REGION'))
 
     @patch('app.exercises.routes.user_output')
