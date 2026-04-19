@@ -11,7 +11,11 @@ from app.chat_module.routes import chat_bp as chat_module_bp
 from app.fitness.benchmark_loader import load_fitness_benchmarks
 from app.logger import get_logger
 from app.exercises.routes import exercises_bp
+<<<<<<< HEAD
 from app.exercises.models import VideoAsset  # noqa: F401
+=======
+from app.rate_limit import init_rate_limiter
+>>>>>>> ef20b056507d9270b4f4c8945138dcbfd5bb6fe6
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -65,6 +69,7 @@ def create_app():
         "origins": cors_origins,
     }
     CORS(app, resources={r"/auth/*": cors_opts, r"/api/*": dict(cors_opts)})
+    init_rate_limiter(app)
 
     db.init_app(app)
 

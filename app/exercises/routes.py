@@ -6,10 +6,14 @@ from dotenv import load_dotenv
 import os
 import uuid
 from werkzeug.utils import secure_filename
+from flask_limiter.util import get_remote_address
 from .openpose import user_output
+
 from app.db_instance import db
 from app.auth_module.utils import resolve_authenticated_user_id
 from .models import VideoAsset
+from app.rate_limit import limiter
+
 
 load_dotenv()
 
@@ -28,6 +32,13 @@ s3 = boto3.client(
 exercises_bp = Blueprint('exercises', __name__)
 EXERCISES_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEO_IN_DIR = os.path.join(EXERCISES_DIR, 'video_in')
+
+def _get_cv_upload_user_rate_limit():
+    return os.getenv('CV_UPLOAD_USER_RATE_LIMIT', '10 per minute')
+
+
+def _get_cv_upload_ip_rate_limit():
+    return os.getenv('CV_UPLOAD_IP_RATE_LIMIT', '30 per minute')
 
 # Might have to map frontend naming to EXERCISE PRESETS
 # IMPORTANT #
@@ -139,9 +150,19 @@ def _build_presigned_get_url(s3_key, expires_seconds=900):
         },
         ExpiresIn=expires_seconds,
     )
+def _upload_user_rate_limit_key():
+    user_id = resolve_authenticated_user_id()
+    if user_id:
+        return f"user:{user_id}"
+
+    forwarded_for = (request.headers.get('X-Forwarded-For') or '').split(',')[0].strip()
+    remote_ip = forwarded_for or request.remote_addr or 'unknown'
+    return f"anon:{remote_ip}"
 
 
 @exercises_bp.route('/analyze', methods=['POST'])
+@limiter.limit(_get_cv_upload_ip_rate_limit, key_func=get_remote_address)
+@limiter.limit(_get_cv_upload_user_rate_limit, key_func=_upload_user_rate_limit_key)
 def analyze_video():
     print(f"[CV] /analyze received files={list(request.files.keys())}, form_keys={list(request.form.keys())}")
 
