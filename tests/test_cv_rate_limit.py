@@ -17,6 +17,8 @@ sys.modules.setdefault("app.exercises.openpose", openpose_stub)
 import app.main as main_module
 import app.exercises.routes as routes_module
 import app.rate_limit as rate_limit_module
+from app.db_instance import db
+from app.exercises.models import VideoAsset  # noqa: F401
 
 
 @pytest.fixture
@@ -35,6 +37,8 @@ def app(monkeypatch, tmp_path):
 
     app = main_module.create_app()
     app.testing = True
+    with app.app_context():
+        db.create_all()
     return app
 
 
