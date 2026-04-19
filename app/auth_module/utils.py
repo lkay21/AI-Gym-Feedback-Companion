@@ -4,7 +4,27 @@ from typing import Optional
 from flask import jsonify, request, session
 
 from app.db_instance import db
+from .supabase_client import get_supabase_client
 from .models import User
+
+
+def _resolve_user_id_from_bearer_token() -> Optional[str]:
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.lower().startswith("bearer "):
+        return None
+
+    token = authorization.split(" ", 1)[1].strip() if " " in authorization else ""
+    if not token:
+        return None
+
+    try:
+        supabase = get_supabase_client()
+        response = supabase.auth.get_user(token)
+        user = getattr(response, "user", None)
+        user_id = getattr(user, "id", None)
+        return str(user_id) if user_id else None
+    except Exception:
+        return None
 
 
 def resolve_authenticated_user_id() -> Optional[str]:
@@ -22,6 +42,9 @@ def resolve_authenticated_user_id() -> Optional[str]:
         h = header.strip()
         if h:
             return h
+    bearer_user_id = _resolve_user_id_from_bearer_token()
+    if bearer_user_id:
+        return bearer_user_id
     return None
 
 

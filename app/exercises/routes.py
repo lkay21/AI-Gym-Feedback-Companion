@@ -4,11 +4,16 @@ from flask import Blueprint, request, jsonify
 import boto3
 from dotenv import load_dotenv
 import os
+import uuid
 from werkzeug.utils import secure_filename
 from flask_limiter.util import get_remote_address
 from .openpose import user_output
+
+from app.db_instance import db
 from app.auth_module.utils import resolve_authenticated_user_id
+from .models import VideoAsset
 from app.rate_limit import limiter
+
 
 load_dotenv()
 
@@ -93,6 +98,58 @@ def parse_user_video(video_file, exercise, user_id):
     }
 
 
+def _build_s3_asset_keys(filename, exercise, owner_user_id):
+    raw_key = owner_user_id + '_' + exercise + '?' + filename + '_raw'
+    pose_key = owner_user_id + '_' + exercise + '?' + filename
+    return raw_key, pose_key
+
+
+def _create_video_asset(owner_user_id, exercise, filename):
+    raw_key, pose_key = _build_s3_asset_keys(filename, exercise, owner_user_id)
+    asset = VideoAsset(
+        asset_id=uuid.uuid4().hex,
+        owner_user_id=owner_user_id,
+        exercise=exercise,
+        original_filename=filename,
+        raw_s3_key=raw_key,
+        pose_s3_key=pose_key,
+    )
+    db.session.add(asset)
+    db.session.commit()
+    return asset
+
+
+def _get_request_user_id_or_401():
+    request_user_id = resolve_authenticated_user_id()
+    if not request_user_id:
+        return None, (jsonify({'error': 'Authentication required'}), 401)
+    return request_user_id, None
+
+
+def _get_owned_asset_or_error(asset_id):
+    request_user_id, auth_error = _get_request_user_id_or_401()
+    if auth_error:
+        return None, auth_error
+
+    asset = VideoAsset.query.filter_by(asset_id=asset_id).first()
+    if not asset:
+        return None, (jsonify({'error': 'Video asset not found'}), 404)
+
+    if str(asset.owner_user_id) != str(request_user_id):
+        return None, (jsonify({'error': 'Not authorized to access this video resource'}), 403)
+
+    return asset, None
+
+
+def _build_presigned_get_url(s3_key, expires_seconds=900):
+    return s3.generate_presigned_url(
+        'get_object',
+        Params={
+            'Bucket': bucket_name,
+            'Key': s3_key,
+        },
+        ExpiresIn=expires_seconds,
+    )
 def _upload_user_rate_limit_key():
     user_id = resolve_authenticated_user_id()
     if user_id:
@@ -135,9 +192,53 @@ def analyze_video():
     print(f"[CV] Saved upload to {local_path}, exercise={exercise}, user_id={user_id}")
 
     output = parse_user_video(filename, exercise, user_id)
+    owner_user_id = resolve_authenticated_user_id() or str(user_id)
+    asset = _create_video_asset(owner_user_id, exercise, filename)
+    output['asset_id'] = asset.asset_id
     output['user_id'] = user_id
     output['exercise'] = exercise
     return jsonify(output), 200
+
+
+@exercises_bp.route('/assets/<asset_id>', methods=['GET'])
+def get_video_asset(asset_id):
+    asset, error = _get_owned_asset_or_error(asset_id)
+    if error:
+        return error
+
+    return jsonify({'asset': asset.to_dict()}), 200
+
+
+@exercises_bp.route('/assets/<asset_id>/raw', methods=['GET'])
+def get_raw_video_url(asset_id):
+    asset, error = _get_owned_asset_or_error(asset_id)
+    if error:
+        return error
+
+    url = _build_presigned_get_url(asset.raw_s3_key)
+    return jsonify({
+        'asset_id': asset.asset_id,
+        'resource': 'raw_video',
+        's3_key': asset.raw_s3_key,
+        'url': url,
+        'expires_in_seconds': 900,
+    }), 200
+
+
+@exercises_bp.route('/assets/<asset_id>/pose', methods=['GET'])
+def get_pose_video_url(asset_id):
+    asset, error = _get_owned_asset_or_error(asset_id)
+    if error:
+        return error
+
+    url = _build_presigned_get_url(asset.pose_s3_key)
+    return jsonify({
+        'asset_id': asset.asset_id,
+        'resource': 'pose_video',
+        's3_key': asset.pose_s3_key,
+        'url': url,
+        'expires_in_seconds': 900,
+    }), 200
 
 
 # TESTING #
