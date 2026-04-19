@@ -148,10 +148,18 @@ To securely create and store all necessary external credentials and variables fo
    SUPABASE_URL=url_here
    SUPABASE_ANON_KEY=anon_key_here
    ```
-5. Save the edited `.env` file and ensure it is included in the `.gitignore` file so credentials are never committed to version control.
+5. Add optional CV upload rate-limit settings:
+   ```
+   CV_UPLOAD_USER_RATE_LIMIT=10 per minute
+   CV_UPLOAD_IP_RATE_LIMIT=30 per minute
+   ```
+6. Save the edited `.env` file and ensure it is included in the `.gitignore` file so credentials are never committed to version control.
 
 #### Expected Result
 The `.env` file is correctly populated and the application can run with proper access to all external services needed.
+
+#### Note on upload limits
+If a client exceeds upload frequency limits on `POST /api/cv/analyze`, the backend returns HTTP `429` (`Rate limit exceeded`).
 
 ---
 
