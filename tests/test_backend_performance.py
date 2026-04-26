@@ -4,6 +4,11 @@ import boto3
 import pytest
 from dotenv import load_dotenv
 
+load_dotenv()
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+REGION = "us-east-2"
+
 bucket_name = 'fitness-form-videos'
 s3 = boto3.client(
     's3',
@@ -20,11 +25,6 @@ table_health = dynamo.Table('health_data')
 table_fitness_plan = dynamo.Table('fitness_plan')
 table_user_prof = dynamo.Table('user_profiles')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-load_dotenv()
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-REGION = "us-east-2"
 
 @pytest.fixture(scope="module")
 def setup_test_files():
