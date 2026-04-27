@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import SnapshotScreen from "../SnapshotScreen";
 
 jest.mock("react-native-calendars", () => {
@@ -9,7 +9,7 @@ jest.mock("react-native-calendars", () => {
     Calendar: ({ onDayPress }) => (
       <Text
         testID="calendar"
-        onPress={() => onDayPress({ dateString: "2025-12-15" })}
+        onPress={() => onDayPress({ dateString: "2026-04-28" })}
       >
         Calendar
       </Text>
@@ -27,92 +27,137 @@ jest.mock("../../components/MenuDropdown", () => {
 
 jest.mock("@expo/vector-icons", () => ({ Ionicons: "Ionicons" }));
 
+jest.mock("../../services/api", () => ({
+  chatAPI: { generatePlan: jest.fn() },
+}));
+
+jest.mock("../../utils/planMapping", () => ({
+  mapPlanToCalendarEvents: jest.fn(),
+}));
+
+import { chatAPI } from "../../services/api";
+import { mapPlanToCalendarEvents } from "../../utils/planMapping";
+
+const MOCK_EVENTS = [
+  {
+    date: "2026-04-28",
+    type: "workout",
+    title: "Upper Body",
+    metadata: {
+      workoutType: "Upper Body",
+      estimatedDurationMinutes: 45,
+      exercises: [{ name: "Bench Press", sets: 3, reps: 10 }],
+    },
+  },
+];
+
+const MOCK_PLAN_RESPONSE = {
+  success: true,
+  data: {
+    structuredPlan: { planName: "My Test Plan", weeks: [] },
+  },
+};
+
 describe("SnapshotScreen unit tests", () => {
   const mockNavigation = { navigate: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    chatAPI.generatePlan.mockResolvedValue(MOCK_PLAN_RESPONSE);
+    mapPlanToCalendarEvents.mockReturnValue(MOCK_EVENTS);
   });
 
-  it("renders screen title and section headers", () => {
+  it("renders screen title and header on initial mount", () => {
     const { getByText } = render(
       <SnapshotScreen navigation={mockNavigation} />
     );
     expect(getByText("Workout Snapshot")).toBeTruthy();
     expect(getByText("Today's Snapshot")).toBeTruthy();
-    expect(getByText("Targeted Muscle Groups")).toBeTruthy();
   });
 
-  it("renders all five day pills", () => {
+  it("shows loading indicator while plan is fetching", () => {
     const { getByText } = render(
       <SnapshotScreen navigation={mockNavigation} />
     );
-    expect(getByText("Sat")).toBeTruthy();
-    expect(getByText("Sun")).toBeTruthy();
-    expect(getByText("Mon")).toBeTruthy();
-    expect(getByText("Tue")).toBeTruthy();
-    expect(getByText("Wed")).toBeTruthy();
+    expect(getByText("Loading your plan…")).toBeTruthy();
   });
 
-  it("renders all three exercises in the session card", () => {
+  it("shows plan name after successful API load", async () => {
     const { getByText } = render(
       <SnapshotScreen navigation={mockNavigation} />
     );
-    expect(getByText("Exercise 1")).toBeTruthy();
-    expect(getByText("Exercise 2")).toBeTruthy();
-    expect(getByText("Exercise 3")).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText("My Test Plan")).toBeTruthy();
+    });
   });
 
-  it("renders session card warmup info", () => {
+  it("shows error text and Retry button when API fails", async () => {
+    chatAPI.generatePlan.mockResolvedValue({
+      success: false,
+      error: "Server unavailable",
+    });
     const { getByText } = render(
       <SnapshotScreen navigation={mockNavigation} />
     );
-    // Use regex to avoid smart-quote vs straight-quote mismatch in source
-    expect(getByText(/Starting Today.s Session/)).toBeTruthy();
-    expect(getByText("10.00 mins")).toBeTruthy();
-    expect(getByText("Running")).toBeTruthy();
-    expect(getByText("Exercises")).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText("Server unavailable")).toBeTruthy();
+      expect(getByText("Retry")).toBeTruthy();
+    });
   });
 
-  it("does not navigate when prompt is empty", () => {
+  it("retries loading when Retry is pressed", async () => {
+    chatAPI.generatePlan
+      .mockResolvedValueOnce({ success: false, error: "Server unavailable" })
+      .mockResolvedValueOnce(MOCK_PLAN_RESPONSE);
+
+    const { getByText } = render(
+      <SnapshotScreen navigation={mockNavigation} />
+    );
+    await waitFor(() => expect(getByText("Retry")).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(getByText("Retry"));
+    });
+
+    await waitFor(() => {
+      expect(getByText("My Test Plan")).toBeTruthy();
+    });
+    expect(chatAPI.generatePlan).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not navigate when prompt is empty", async () => {
     const { getByPlaceholderText } = render(
       <SnapshotScreen navigation={mockNavigation} />
     );
+    // Flush the initial chatAPI.generatePlan call so there are no pending updates.
+    await act(async () => {});
     const input = getByPlaceholderText("Enter Your Prompt Here...");
     fireEvent(input, "submitEditing");
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 
-  it("does not navigate when prompt is whitespace only", () => {
+  it("does not navigate when prompt is whitespace only", async () => {
     const { getByPlaceholderText } = render(
       <SnapshotScreen navigation={mockNavigation} />
     );
+    await act(async () => {});
     const input = getByPlaceholderText("Enter Your Prompt Here...");
     fireEvent.changeText(input, "   ");
     fireEvent(input, "submitEditing");
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 
-  it("navigates to ChatBot with prompt text and clears input on send", () => {
+  it("navigates to ChatBot with prompt text and clears input on send", async () => {
     const { getByPlaceholderText } = render(
       <SnapshotScreen navigation={mockNavigation} />
     );
+    await act(async () => {});
     const input = getByPlaceholderText("Enter Your Prompt Here...");
     fireEvent.changeText(input, "How do I squat correctly?");
     fireEvent(input, "submitEditing");
-
     expect(mockNavigation.navigate).toHaveBeenCalledWith("ChatBot", {
       q: "How do I squat correctly?",
     });
     expect(input.props.value).toBe("");
-  });
-
-  it("updates selected day pill when pressed", () => {
-    const { getByText } = render(
-      <SnapshotScreen navigation={mockNavigation} />
-    );
-    fireEvent.press(getByText("Sat"));
-    // Sat pill should now be active — no crash and pill renders correctly
-    expect(getByText("Sat")).toBeTruthy();
   });
 });

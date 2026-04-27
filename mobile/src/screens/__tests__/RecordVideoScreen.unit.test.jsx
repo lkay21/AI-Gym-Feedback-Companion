@@ -1,62 +1,89 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import RecordVideoScreen from "../RecordVideoScreen";
 
 jest.mock("@expo/vector-icons", () => ({ Ionicons: "Ionicons" }));
 
-describe("RecordVideoScreen unit tests", () => {
-  const mockNavigation = { navigate: jest.fn() };
+jest.mock("../../services/api", () => ({
+  cvAPI: {
+    analyzeVideo: jest.fn(),
+  },
+}));
+
+// Per-test AsyncStorage override (global mock from jest.setup.js handles the default).
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: jest.fn().mockResolvedValue(null),
+  setItem: jest.fn().mockResolvedValue(undefined),
+}));
+
+describe("RecordVideoScreen (UploadExerciseScreen) unit tests", () => {
+  const mockNavigation = { navigate: jest.fn(), goBack: jest.fn() };
+  const mockRoute = {};
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("renders the screen title and section label", () => {
+  it("renders the screen title", () => {
     const { getByText } = render(
-      <RecordVideoScreen navigation={mockNavigation} />
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
     );
-    expect(getByText("Record a Video")).toBeTruthy();
-    expect(getByText("CV Processing Screen")).toBeTruthy();
+    expect(getByText("Analyze Your Form")).toBeTruthy();
   });
 
-  it("renders recording instructions", () => {
+  it("renders the Choose Exercise section label", () => {
     const { getByText } = render(
-      <RecordVideoScreen navigation={mockNavigation} />
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
     );
-    expect(getByText(/Click Start to begin recording/i)).toBeTruthy();
+    expect(getByText("Choose Exercise")).toBeTruthy();
   });
 
-  it("renders both action buttons", () => {
+  it("renders Select an Exercise button when no exercise chosen", () => {
     const { getByText } = render(
-      <RecordVideoScreen navigation={mockNavigation} />
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
     );
-    expect(getByText("Re-record Video")).toBeTruthy();
-    expect(getByText("Upload Video")).toBeTruthy();
+    expect(getByText("Select an Exercise")).toBeTruthy();
   });
 
-  it("renders guidance tip", () => {
+  it("renders the Select Video section label", () => {
     const { getByText } = render(
-      <RecordVideoScreen navigation={mockNavigation} />
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
     );
-    expect(getByText("Step Further Back!")).toBeTruthy();
-    expect(
-      getByText("Keep your full body within frame of the camera!")
-    ).toBeTruthy();
+    expect(getByText("Select Video")).toBeTruthy();
   });
 
-  it("navigates to ExerciseSelect when Upload Video is pressed", () => {
+  it("renders the video drop zone", () => {
     const { getByText } = render(
-      <RecordVideoScreen navigation={mockNavigation} />
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
     );
-    fireEvent.press(getByText("Upload Video"));
+    expect(getByText("Tap to choose a video")).toBeTruthy();
+  });
+
+  it("renders the Upload & Get Feedback button", () => {
+    const { getByText } = render(
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
+    );
+    expect(getByText("Upload & Get Feedback")).toBeTruthy();
+  });
+
+  it("navigates to ExerciseSelect when Select an Exercise is pressed", async () => {
+    const { getByText } = render(
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
+    );
+    await act(async () => {
+      fireEvent.press(getByText("Select an Exercise"));
+    });
     expect(mockNavigation.navigate).toHaveBeenCalledWith("ExerciseSelect");
   });
 
-  it("does not navigate when Re-record Video is pressed", () => {
+  it("renders the pro tip guidance text", () => {
     const { getByText } = render(
-      <RecordVideoScreen navigation={mockNavigation} />
+      <RecordVideoScreen navigation={mockNavigation} route={mockRoute} />
     );
-    fireEvent.press(getByText("Re-record Video"));
-    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    expect(getByText("Pro tip")).toBeTruthy();
+    expect(
+      getByText(/Keep your full body in frame/i)
+    ).toBeTruthy();
   });
 });

@@ -1,67 +1,95 @@
 /**
- * Integration test: RecordVideoScreen → ExerciseSelectScreen
+ * Integration test: UploadExerciseScreen (RecordVideoScreen) → ExerciseSelectScreen
  *
- * Simulates the full video-upload entry flow using a real shared navigation
- * state object (instead of a native stack) to avoid native gesture-handler
- * dependencies that can't run in a Jest / Node environment.
+ * Uses a shared React state object to simulate navigation without a native
+ * NavigationContainer, which avoids gesture-handler dependencies in Jest.
  */
 import React, { useState } from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import RecordVideoScreen from "../RecordVideoScreen";
 import ExerciseSelectScreen from "../ExerciseSelectScreen";
 
 jest.mock("@expo/vector-icons", () => ({ Ionicons: "Ionicons" }));
 
+jest.mock("../../services/api", () => ({
+  cvAPI: { analyzeVideo: jest.fn() },
+}));
+
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: jest.fn().mockResolvedValue(null),
+  setItem: jest.fn().mockResolvedValue(undefined),
+}));
+
 function VideoUploadApp() {
   const [screen, setScreen] = useState("RecordVideo");
+  const [routeParams, setRouteParams] = useState({});
 
   const navigation = {
-    navigate: (name) => setScreen(name),
+    navigate: (name, params) => {
+      setRouteParams(params ?? {});
+      setScreen(name);
+    },
     goBack: () => setScreen("RecordVideo"),
   };
 
   if (screen === "RecordVideo") {
-    return <RecordVideoScreen navigation={navigation} />;
+    return (
+      <RecordVideoScreen
+        navigation={navigation}
+        route={{ params: routeParams }}
+      />
+    );
   }
   return <ExerciseSelectScreen navigation={navigation} />;
 }
 
 describe("Video upload flow integration", () => {
-  it("navigates from RecordVideoScreen to ExerciseSelectScreen on Upload Video, then back", async () => {
+  it("starts on UploadExerciseScreen and not on ExerciseSelectScreen", () => {
+    const { getByText, queryByText } = render(<VideoUploadApp />);
+    expect(getByText("Analyze Your Form")).toBeTruthy();
+    expect(queryByText("Select Your Exercise")).toBeNull();
+  });
+
+  it("navigates to ExerciseSelectScreen when Select an Exercise is pressed", async () => {
     const { getByText, queryByText } = render(<VideoUploadApp />);
 
-    // Start on RecordVideoScreen
-    expect(getByText("Record a Video")).toBeTruthy();
-    expect(queryByText("Select Your Exercise")).toBeNull();
-
-    // Press Upload Video
-    fireEvent.press(getByText("Upload Video"));
+    await act(async () => {
+      fireEvent.press(getByText("Select an Exercise"));
+    });
 
     await waitFor(() => {
       expect(getByText("Select Your Exercise")).toBeTruthy();
     });
+    expect(queryByText("Analyze Your Form")).toBeNull();
+  });
 
-    // ExerciseSelectScreen renders the exercise list
-    expect(getByText("Exercise 1")).toBeTruthy();
-    expect(getByText("Exercise 2")).toBeTruthy();
-    expect(getByText("Exercise 3")).toBeTruthy();
+  it("ExerciseSelectScreen lists exercises", async () => {
+    const { getByText } = render(<VideoUploadApp />);
 
-    // Press Back — returns to RecordVideoScreen
-    fireEvent.press(getByText("Back"));
+    await act(async () => {
+      fireEvent.press(getByText("Select an Exercise"));
+    });
 
     await waitFor(() => {
-      expect(getByText("Record a Video")).toBeTruthy();
+      expect(getByText("Bicep Curl (Biceps)")).toBeTruthy();
+      expect(getByText("Lateral Raise (Shoulders)")).toBeTruthy();
     });
   });
 
-  it("does not navigate when Re-record Video is pressed", async () => {
-    const { getByText, queryByText } = render(<VideoUploadApp />);
+  it("pressing Back on ExerciseSelectScreen returns to UploadExerciseScreen", async () => {
+    const { getByText } = render(<VideoUploadApp />);
 
-    fireEvent.press(getByText("Re-record Video"));
+    await act(async () => {
+      fireEvent.press(getByText("Select an Exercise"));
+    });
+    await waitFor(() => expect(getByText("Select Your Exercise")).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(getByText("Back"));
+    });
 
     await waitFor(() => {
-      expect(getByText("Record a Video")).toBeTruthy();
-      expect(queryByText("Select Your Exercise")).toBeNull();
+      expect(getByText("Analyze Your Form")).toBeTruthy();
     });
   });
 });
