@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const s = require\\('fs'\\).readFileSync\\('src/screens/SnapshotScreen.jsx', 'utf8'\\); const m = s.match\\(/Starting Today.s Session/\\); if\\(m\\) { const char = m[0][14]; console.log\\('char code:', char.charCodeAt\\(0\\), 'hex:', char.charCodeAt\\(0\\).toString\\(16\\)\\); }\")"
+    ]
+  }
+}
