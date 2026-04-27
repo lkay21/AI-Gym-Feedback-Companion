@@ -13,6 +13,7 @@ from app.fitness.plan_transformer import (
 )
 from app.fitness.plan_service import FitnessPlanService
 from app.profile_module.service import HealthDataService
+import time
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -406,6 +407,7 @@ def chat_gemini():
     - When available, the user's health profile from DynamoDB is passed as context
       (age, height, weight, gender, fitness_goal).
     """
+    start_time = time.time()
     try:
         user_id = get_authenticated_user_id()
         data = request.get_json() or {}
@@ -509,6 +511,9 @@ def chat_gemini():
             conversation_history=conversation_history,
             user_profile=user_profile or None,
         )
+
+        end_time = time.time()
+        print(f"Gemini response generated in {end_time - start_time:.2f} seconds")
 
         return jsonify(
             {

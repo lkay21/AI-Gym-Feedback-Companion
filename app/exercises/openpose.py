@@ -7,6 +7,7 @@ import importlib
 from dotenv import load_dotenv
 import numpy as np
 # import exercise as ex
+import time
 from . import exercise as ex
 import time
 from sklearn.metrics import root_mean_squared_error
@@ -665,34 +666,58 @@ if __name__ == "__main__":
     # exercise_str = "shoulder_press"
     # example_vid = "shoulder_press.mov"
 
-    # train_exercises = ['bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
-    #              'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
-    #              'shoulder_press'
-    #             ]
-    # train_vids = [
-    #         'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
-    #         'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
-    #         'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV'
-    #        ]
-    
+    test_exercises = ['bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press', 'bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press', 'bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press', 'bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press'
+                ]
+    test_vids = [
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV',
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV',
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV',
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV'
+           ]
+        
     # test_exercises = ["lateral_raise", "lateral_raise", "bicep_curl"]
     # test_vids = ["lat_raise_good.mp4", "lat_raise_bad.mp4", "rename.mp4"]
     
     # assert len(train_exercises) == len(train_vids), "Mismatch between exercises and video files"
-    # assert len(test_exercises) == len(test_vids), "Mismatch between exercises and video files"
+    assert len(test_exercises) == len(test_vids), "Mismatch between exercises and video files"
 
-    # # if test == 0, training
-    # test = 0
+    # if test == 0, training
+    test = 1
+    num_in_time = 0
 
-    # if not(test):
-    #     for exercise, vid in zip(train_exercises, train_vids):
-    #         get_standard_pose(vid, exercise)
-    # else:
-    #     for exercise, vid in zip(test_exercises, test_vids):
-    #         overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(vid, exercise)
-    #         print(f"Overall Score: {overall_score}")
-    #         print(f"\nFeedback for {exercise}:\n")
-    #         print(out_string)
+    if not(test):
+        for exercise, vid in zip(train_exercises, train_vids):
+            get_standard_pose(vid, exercise)
+    else:
+        for exercise, vid in zip(test_exercises, test_vids):
+            start_time = time.time()
+            overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(vid, exercise, user_id="test_user", aws_upload=False)
+            print(f"Overall Score: {overall_score}")
+            print(f"\nFeedback for {exercise}:\n")
+            print(out_string)
+            end_time = time.time()
+            print(f"Time taken for user output generation: {end_time - start_time} seconds")
+            if end_time - start_time <= 30:
+                num_in_time += 1
+            print(f"{num_in_time} out of {len(test_exercises)} feedback generations completed within 30 seconds so far.\n")
+            time.sleep(5)
+    print(f"\n{num_in_time} out of {len(test_exercises)} feedback generations were completed within 30 seconds.")
 
 
     # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
@@ -705,10 +730,10 @@ if __name__ == "__main__":
     # get_standard_pose(example_vid, exercise_str)
     # get_standard_pose(example_vid_2, exercise_str_2)
 
-    overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(rename_vid, exercise_str, "test_user", aws_upload=False)
-    print(f"Overall Score: {overall_score}")
-    print(f"\nFeedback for {exercise_str}:\n")
-    print(out_string)
+    # overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(rename_vid, exercise_str, "test_user", aws_upload=False)
+    # print(f"Overall Score: {overall_score}")
+    # print(f"\nFeedback for {exercise_str}:\n")
+    # print(out_string)
 
     # overall, joints, context_dict = FormScore(rename_vid, exercise_str)
 
