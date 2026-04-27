@@ -7,10 +7,66 @@ We now implement those on top of the shared GeminiClient in
 `app.chatbot.gemini_client`.
 """
 
-from typing import Any, Dict, List
+from datetime import date, timedelta
+from typing import Any, Dict, List, Optional
 import json
 
 from app.chatbot.gemini_client import GeminiClient as BaseGeminiClient
+
+
+def _day_key(entry: Dict[str, Any]) -> str:
+    d = entry.get("date_of_workout") or ""
+    return str(d)[:10]
+
+
+def _split_evenly(items: List[Dict[str, Any]], n: int) -> List[List[Dict[str, Any]]]:
+    if n <= 0:
+        return [items]
+    L = len(items)
+    if L == 0:
+        return []
+    base, extra = divmod(L, n)
+    chunks: List[List[Dict[str, Any]]] = []
+    idx = 0
+    for i in range(n):
+        sz = base + (1 if i < extra else 0)
+        chunks.append(items[idx : idx + sz])
+        idx += sz
+    return chunks
+
+
+def _renormalize_fitness_plan_dates(entries: List[Dict[str, Any]], start: date) -> None:
+    """
+    Force workout dates onto consecutive calendar days beginning at `start`.
+
+    The model often emits stale years; we treat its dates only as day-grouping hints
+    (same string = same day), then remap to [start, start+1, ...].
+    """
+    if not entries:
+        return
+
+    blocks: List[List[Dict[str, Any]]] = []
+    for e in entries:
+        if not blocks:
+            blocks.append([e])
+        elif _day_key(e) == _day_key(blocks[-1][0]):
+            blocks[-1].append(e)
+        else:
+            blocks.append([e])
+
+    def apply_day(block: List[Dict[str, Any]], d: date) -> None:
+        ds = d.isoformat()
+        for x in block:
+            x["date_of_workout"] = ds
+
+    if len(blocks) == 1:
+        n_days = min(14, max(1, len(entries)))
+        for i, chunk in enumerate(_split_evenly(entries, n_days)):
+            apply_day(chunk, start + timedelta(days=i))
+        return
+
+    for i, block in enumerate(blocks):
+        apply_day(block, start + timedelta(days=min(i, 13)))
 
 
 class GeminiClient(BaseGeminiClient):
@@ -94,7 +150,12 @@ class GeminiClient(BaseGeminiClient):
             ]
             return fallback[:count]
 
-    def generate_two_week_fitness_plan(self, health_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def generate_two_week_fitness_plan(
+        self,
+        health_data: Dict[str, Any],
+        *,
+        plan_start_date: Optional[date] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Generate a 2-week fitness plan based on the user's health profile.
 
@@ -102,10 +163,16 @@ class GeminiClient(BaseGeminiClient):
         flow: we ask Gemini for structured JSON and normalise it into a list of
         plain dicts with stable keys that the fitness_plan module expects.
         """
+        start = plan_start_date or date.today()
+        last = start + timedelta(days=13)
         prompt = (
             "You are a fitness planner. Based on the following user profile, generate a "
-            "2-week workout plan as JSON ONLY. Each entry should include:\n"
-            "  - date_of_workout (ISO date string, e.g. 2026-03-01)\n"
+            "2-week workout plan as JSON ONLY (a JSON array). "
+            f"Schedule every workout on one of these 14 consecutive calendar days only: "
+            f"from {start.isoformat()} through {last.isoformat()} (inclusive). "
+            "Do not use any other dates, years, or past months — only those dates.\n"
+            "Each array entry should include:\n"
+            "  - date_of_workout (ISO date YYYY-MM-DD, must be one of the 14 days above)\n"
             "  - exercise_name\n"
             "  - exercise_description\n"
             "  - rep_count (number, e.g. 10)\n"
@@ -170,6 +237,7 @@ class GeminiClient(BaseGeminiClient):
                         else None,
                     }
                 )
+            _renormalize_fitness_plan_dates(out, start)
             return out
         except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
             raise Exception(f"Failed to parse fitness plan from model: {e}") from e

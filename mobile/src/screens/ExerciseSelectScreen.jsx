@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, FlatList, Image, Pressable, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, FlatList, Image, Pressable } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -9,25 +10,105 @@ export default function ExerciseSelectScreen({ navigation }) {
     () => [
       {
         id: "e1",
-        title: "Exercise 1",
+        title: "Bicep Curl (Biceps)",
+        key: "bicep_curl",
         duration: "02.30 Minutes",
         image: "https://images.unsplash.com/photo-1599058918144-1ffabb6ab9a0?auto=format&fit=crop&w=200&q=80",
       },
       {
         id: "e2",
-        title: "Exercise 2",
+        title: "Lateral Raise (Shoulders)",
+        key: "lateral_raise",
         duration: "02.00 Minutes",
         image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
       },
       {
         id: "e3",
-        title: "Exercise 3",
-        duration: "03.20 Minutes",
-        image: "https://images.unsplash.com/photo-1517963628607-235ccdd5476c?auto=format&fit=crop&w=200&q=80",
+        title: "Shoulder Press (Shoulders)",
+        key: "shoulder_press",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e4",
+        title: "Hammer Curl (Biceps)",
+        key: "hammer_curl",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e5",
+        title: "Bent Over Row (Back)",
+        key: "bent_over_row",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e6",
+        title: "Tricep Rope Pulldown (Triceps)",
+        key: "close_grip_pulldown",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e7",
+        title: "Front Raise (Shoulders)",
+        key: "front_raise",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e8",
+        title: "Left Front Raise (Isolated Movement - Shoulders)",
+        key: "iso_left_front_raise",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e9",
+        title: "Left Overhead Extension (Isolated Movement - Triceps)",
+        key: "iso_left_overhead_extension",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e10",
+        title: "Overhead Extension (Triceps)",
+        key: "overhead_extension",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e11",
+        title: "Pushdown (Triceps)",
+        key: "pushdown",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e12",
+        title: "Right Front Raise (Isolated Movement - Shoulders)",
+        key: "iso_right_front_raise",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
+      },
+      {
+        id: "e13",
+        title: "Right Overhead Extension (Isolated Movement - Triceps)",
+        key: "iso_right_overhead_extension",
+        duration: "02.00 Minutes",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=200&q=80",
       },
     ],
     []
   );
+
+    const onSelectExercise = (exercise) => {
+    navigation.navigate("RecordVideo", { 
+        selectedExercise: exercise.title,
+        selectedExerciseKey: exercise.key,
+    });
+  };
 
   return (
     <LinearGradient
@@ -36,7 +117,7 @@ export default function ExerciseSelectScreen({ navigation }) {
       end={{ x: 0.85, y: 0.95 }}
       style={styles.gradient}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.card}>
           <View style={styles.topRow}>
             <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -54,7 +135,7 @@ export default function ExerciseSelectScreen({ navigation }) {
             contentContainerStyle={styles.listContent}
             ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
             renderItem={({ item }) => (
-              <Pressable style={styles.row} onPress={() => {}}>
+              <Pressable style={styles.row} onPress={() => onSelectExercise(item)}>
                 <Image source={{ uri: item.image }} style={styles.thumb} />
                 <View style={styles.textCol}>
                   <Text style={styles.exerciseTitle}>{item.title}</Text>

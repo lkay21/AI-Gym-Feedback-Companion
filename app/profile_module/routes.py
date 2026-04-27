@@ -2,9 +2,10 @@
 API routes for user profiles and health data
 """
 import json
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 from datetime import datetime
+from app.auth_module.utils import resolve_authenticated_user_id
 from app.profile_module.service import ProfileService, HealthDataService
 from app.profile_module.models import UserProfile, HealthData
 
@@ -12,8 +13,8 @@ profile_bp = Blueprint('profile', __name__, url_prefix='/api/profile')
 
 
 def get_authenticated_user_id() -> str:
-    """Get authenticated user ID from session"""
-    user_id = session.get('user_id')
+    """Get authenticated user ID from session or X-User-Id (mobile)."""
+    user_id = resolve_authenticated_user_id()
     if not user_id:
         raise ValueError("User not authenticated")
     return user_id

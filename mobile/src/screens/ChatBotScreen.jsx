@@ -6,12 +6,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { chatAPI } from "../services/api";
 import MenuDropdown from "../components/MenuDropdown";
 
@@ -99,13 +99,12 @@ export default function ChatBotScreen({ route }) {
     setError("");
 
     try {
-      // Build conversation history for the backend (map our roles to user/assistant)
       const history = [...messages, userMsg]
-        .filter((m) => !m.kind) // skip static headline if needed
-        .map((m) => ({
-          role: m.role === "bot" ? "assistant" : "user",
-          content: m.text,
-        }));
+      .filter((m) => m.kind !== "intro")
+      .map((m) => ({
+        role: m.role,
+        text: m.text,
+      }));
 
       const result = await chatAPI.sendChatbotMessage(trimmed, history, {});
 
@@ -192,32 +191,32 @@ export default function ChatBotScreen({ route }) {
 
   return (
     <LinearGradient
-      colors={["#4C76D6", "#8E5AAE"]}
-      start={{ x: 0.15, y: 0.1 }}
-      end={{ x: 0.85, y: 0.95 }}
+      colors={["#7c3aed", "#6366f1", "#4c1d95"]}
       style={styles.gradient}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <KeyboardAvoidingView
           style={styles.safe}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <View style={styles.card}>
-            <View style={styles.topBar}>
-              <Text style={styles.screenTitle}>ChatBot Screen</Text>
-              <MenuDropdown />
-            </View>
+          <View style={styles.outerHeader}>
+            <Text style={styles.screenTitle}>ChatBot Screen</Text>
+            <MenuDropdown />
+          </View>
 
+          <View style={styles.card}>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <FlatList
               ref={listRef}
+              style={{ flex: 1 }}
               data={messages}
               keyExtractor={(item) => item.id}
               renderItem={renderItem}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               onContentSizeChange={scrollToBottom}
             />
 
@@ -252,10 +251,22 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
 
+  outerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 4,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+    zIndex: 20,
+    elevation: 20,
+  },
+
   card: {
     flex: 1,
     marginHorizontal: 16,
-    marginTop: 10,
+    marginTop: 0,
     marginBottom: 14,
     borderRadius: 28,
     paddingTop: 12,
@@ -264,14 +275,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.18)",
     overflow: "hidden",
-  },
-
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 6,
-    paddingBottom: 10,
   },
 
   errorText: {

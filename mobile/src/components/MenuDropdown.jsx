@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, Modal } from "react-native";
+import { TouchableOpacity } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
@@ -12,8 +13,8 @@ export default function MenuDropdown() {
     () => [
       { label: "ChatBot", routeName: "ChatBot" },
       { label: "Dashboard", routeName: "Dashboard" },
-      { label: "Insights", routeName: "Insights" },
       { label: "Snapshot", routeName: "Snapshot" },
+      { label: "User Profile", routeName: "UserProfile" },
     ],
     []
   );
@@ -25,17 +26,27 @@ export default function MenuDropdown() {
   };
 
   return (
-    <View>
-      <Pressable style={styles.menuBtn} onPress={() => setOpen(true)}>
+    // RNGH TouchableOpacity: works reliably with @react-navigation/stack gestures on Android.
+    // Outer View: avoid native view collapse removing the hit target in flex rows.
+    <View collapsable={false}>
+      <TouchableOpacity
+        style={styles.menuBtn}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.75}
+        hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+      >
         <Text style={styles.menuText}>Menu</Text>
         <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.9)" />
-      </Pressable>
+      </TouchableOpacity>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        {/* Backdrop */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
 
-        {/* Dropdown */}
         <View style={styles.dropdownWrap}>
           <View style={styles.dropdown}>
             {items.map((it) => {
@@ -71,7 +82,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.14)",
   },
-  menuText: { color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "700" },
+  menuText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -83,7 +98,7 @@ const styles = StyleSheet.create({
     right: 18,
   },
   dropdown: {
-    width: 160,
+    width: 170,
     borderRadius: 14,
     overflow: "hidden",
     backgroundColor: "rgba(20, 10, 40, 0.92)",

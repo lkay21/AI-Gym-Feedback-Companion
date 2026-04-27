@@ -9,7 +9,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -17,12 +17,38 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
 
       - name: Run tests
         run: |
           if [ -n "$(find tests -name 'test_*.py' -o -name '*_test.py' 2>/dev/null)" ]; then
-            pytest tests
+            pytest tests -v
+            pytest tests/ -v --cov=app.auth_module --cov-report=term-missing --cov-fail-under=80
           else
             echo "No test files found in tests/ directory, skipping tests"
           fi
+
+      - name: Run integration tests (Chat API with Auth)
+        run: |
+          pytest tests/test_integration_chat_auth.py -v --cov=app --cov-report=term-missing
+
+      - name: Run health onboarding tests with coverage
+        run: |
+          pytest tests/test_llm_conversation_health_onboarding.py tests/test_profile_service_health.py tests/test_chat_plan_endpoint.py -v \
+            --cov=app.chat_module.routes \
+            --cov=app.profile_module.service \
+            --cov-report=term-missing \
+            --cov-fail-under=65
+      - name: Generate SBOM with Syft
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            anchore/syft:latest \
+            /workspace \
+            --output cyclonedx-json=/workspace/sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: SBOM
+          path: sbom.json        
+      

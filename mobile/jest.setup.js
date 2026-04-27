@@ -1,11 +1,12 @@
 import '@testing-library/jest-native/extend-expect';
 import 'react-native-gesture-handler/jestSetup';
 
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+// DashboardScreen and api.js import AsyncStorage; Jest has no native module without this mock.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
 
-// RN 0.73+ moved NativeAnimatedHelper; use a virtual mock so the path is
-// irrelevant and reanimated's mock handles animation behaviour instead.
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper', () => ({}), { virtual: true });
+jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 
 jest.mock('expo-linear-gradient', () => {
 	const React = require('react');
