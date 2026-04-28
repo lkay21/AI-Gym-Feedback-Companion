@@ -9,6 +9,7 @@ We now implement those on top of the shared GeminiClient in
 
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
+import ast
 import json
 
 from app.chatbot.gemini_client import GeminiClient as BaseGeminiClient
@@ -67,6 +68,81 @@ def _renormalize_fitness_plan_dates(entries: List[Dict[str, Any]], start: date) 
 
     for i, block in enumerate(blocks):
         apply_day(block, start + timedelta(days=min(i, 13)))
+
+
+def _extract_json_array_candidate(text: str) -> str:
+    """
+    Extract the most likely JSON array payload from model output.
+
+    Handles common wrappers like markdown code fences and prose before/after
+    the array.
+    """
+    if not text:
+        return ""
+
+    cleaned = text.strip()
+
+    # Prefer fenced payloads first (```json ... ``` or ``` ... ```).
+    if "```" in cleaned:
+        parts = cleaned.split("```")
+        for i in range(1, len(parts), 2):
+            block = parts[i].strip()
+            if block.lower().startswith("json"):
+                block = block[4:].strip()
+            if "[" in block and "]" in block:
+                cleaned = block
+                break
+
+    # Find first balanced [...] sequence.
+    start_idx = cleaned.find("[")
+    if start_idx == -1:
+        return cleaned
+
+    depth = 0
+    in_string = False
+    escape = False
+    for idx in range(start_idx, len(cleaned)):
+        ch = cleaned[idx]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return cleaned[start_idx : idx + 1]
+
+    # Unbalanced array; return suffix from first '[' as best effort.
+    return cleaned[start_idx:]
+
+
+def _parse_plan_payload(text: str) -> List[Dict[str, Any]]:
+    """
+    Parse model output into a Python list of dict entries.
+
+    Try strict JSON first, then a permissive Python-literal parse to recover
+    from common model artifacts like single quotes or trailing commas.
+    """
+    candidate = _extract_json_array_candidate(text)
+
+    parsed: Any
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        parsed = ast.literal_eval(candidate)
+
+    if not isinstance(parsed, list):
+        return []
+    return [item for item in parsed if isinstance(item, dict)]
 
 
 class GeminiClient(BaseGeminiClient):
@@ -193,12 +269,8 @@ class GeminiClient(BaseGeminiClient):
             elif hasattr(response, "candidates") and response.candidates:
                 text = response.candidates[0].content.parts[0].text.strip()
 
-            # Strip Markdown fences if the model wrapped JSON in ```json ... ```
-            if "```" in text:
-                text = text.split("```")[1].replace("json", "").strip()
-
-            plan = json.loads(text)
-            if not isinstance(plan, list):
+            plan = _parse_plan_payload(text)
+            if not plan:
                 return []
 
             out: List[Dict[str, Any]] = []
