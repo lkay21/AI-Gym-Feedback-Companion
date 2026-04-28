@@ -145,6 +145,43 @@ def _parse_plan_payload(text: str) -> List[Dict[str, Any]]:
     return [item for item in parsed if isinstance(item, dict)]
 
 
+def _ensure_two_week_workout_coverage(entries: List[Dict[str, Any]], start: date) -> List[Dict[str, Any]]:
+    """
+    Ensure at least one workout entry exists for each of 14 consecutive days.
+
+    Snapshot UI surfaces workout days prominently. If the model returns sparse
+    entries, fill missing days with a lightweight recovery workout entry so the
+    generated plan still spans two weeks without requiring UI changes.
+    """
+    by_day: Dict[str, List[Dict[str, Any]]] = {}
+    for entry in entries:
+        key = str(entry.get("date_of_workout") or "")[:10]
+        if not key:
+            continue
+        by_day.setdefault(key, []).append(entry)
+
+    for i in range(14):
+        day = (start + timedelta(days=i)).isoformat()
+        if day in by_day:
+            continue
+        filler = {
+            "date_of_workout": day,
+            "exercise_name": "Active Recovery Walk",
+            "exercise_description": "Light cardio and mobility work to support recovery.",
+            "rep_count": 1,
+            "muscle_group": "Full Body",
+            "expected_calories_burnt": 120.0,
+            "weight_to_lift_suggestion": None,
+        }
+        by_day[day] = [filler]
+
+    out: List[Dict[str, Any]] = []
+    for i in range(14):
+        day = (start + timedelta(days=i)).isoformat()
+        out.extend(by_day[day])
+    return out
+
+
 class GeminiClient(BaseGeminiClient):
     """
     Chat-module specific Gemini client.
@@ -241,27 +278,34 @@ class GeminiClient(BaseGeminiClient):
         """
         start = plan_start_date or date.today()
         last = start + timedelta(days=13)
+        allowed_dates = [
+            (start + timedelta(days=i)).isoformat()
+            for i in range(14)
+        ]
         prompt = (
-            "You are a fitness planner. Based on the following user profile, generate a "
-            "2-week workout plan as JSON ONLY (a JSON array). "
-            f"Schedule every workout on one of these 14 consecutive calendar days only: "
-            f"from {start.isoformat()} through {last.isoformat()} (inclusive). "
-            "Do not use any other dates, years, or past months — only those dates.\n"
-            "Each array entry should include:\n"
-            "  - date_of_workout (ISO date YYYY-MM-DD, must be one of the 14 days above)\n"
-            "  - exercise_name\n"
-            "  - exercise_description\n"
-            "  - rep_count (number, e.g. 10)\n"
-            "  - muscle_group\n"
-            "  - expected_calories_burnt (number)\n"
-            "  - weight_to_lift_suggestion (number or null)\n\n"
+            "You are a fitness planner.\n"
+            "Generate a 2-week workout plan for the user profile below.\n\n"
+            "OUTPUT RULES (MANDATORY):\n"
+            "1) Return ONLY a JSON array. No prose, no markdown, no code fences.\n"
+            "2) Use strict JSON with double quotes for all keys and string values.\n"
+            "3) Every object MUST contain exactly these keys:\n"
+            '   "date_of_workout", "exercise_name", "exercise_description", '
+            '"rep_count", "muscle_group", "expected_calories_burnt", "weight_to_lift_suggestion".\n'
+            "4) date_of_workout MUST be YYYY-MM-DD and MUST be one of these dates only:\n"
+            f"   {', '.join(allowed_dates)}\n"
+            "5) rep_count is integer or null.\n"
+            "6) expected_calories_burnt is number or null.\n"
+            "7) weight_to_lift_suggestion is number or null.\n"
+            "8) If a value is unknown, use null (never use placeholders like N/A).\n"
+            "9) Return EXACTLY 14 entries: one workout entry per day across the 14 dates.\n"
+            "10) Before returning, ensure the output is valid JSON parseable by json.loads.\n\n"
             f"User profile: {json.dumps(health_data)}"
         )
 
         try:
             response = self.model.generate_content(
                 contents=[prompt],
-                generation_config={"temperature": 0.5, "max_output_tokens": 8192},
+                generation_config={"temperature": 0.2, "max_output_tokens": 8192},
             )
             text = ""
             if hasattr(response, "text") and response.text:
@@ -269,7 +313,33 @@ class GeminiClient(BaseGeminiClient):
             elif hasattr(response, "candidates") and response.candidates:
                 text = response.candidates[0].content.parts[0].text.strip()
 
-            plan = _parse_plan_payload(text)
+            try:
+                plan = _parse_plan_payload(text)
+            except (json.JSONDecodeError, ValueError, SyntaxError):
+                # If the model produced malformed JSON-ish output, ask it to rewrite
+                # the same payload as strict JSON-only array and parse again.
+                repair_prompt = (
+                    "Rewrite the following content as STRICT JSON ONLY.\n"
+                    "Requirements:\n"
+                    "- Output must be a JSON array only.\n"
+                    "- Use double quotes for all keys/strings.\n"
+                    "- No markdown, no commentary.\n\n"
+                    f"{text}"
+                )
+                repaired = self.model.generate_content(
+                    contents=[repair_prompt],
+                    generation_config={"temperature": 0.0, "max_output_tokens": 8192},
+                )
+                repaired_text = ""
+                if hasattr(repaired, "text") and repaired.text:
+                    repaired_text = repaired.text.strip()
+                elif hasattr(repaired, "candidates") and repaired.candidates:
+                    repaired_text = repaired.candidates[0].content.parts[0].text.strip()
+                try:
+                    plan = _parse_plan_payload(repaired_text)
+                except (json.JSONDecodeError, ValueError, SyntaxError):
+                    return []
+
             if not plan:
                 return []
 
@@ -310,8 +380,8 @@ class GeminiClient(BaseGeminiClient):
                     }
                 )
             _renormalize_fitness_plan_dates(out, start)
-            return out
-        except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
+            return _ensure_two_week_workout_coverage(out, start)
+        except (json.JSONDecodeError, ValueError, KeyError, TypeError, SyntaxError) as e:
             raise Exception(f"Failed to parse fitness plan from model: {e}") from e
 
 
