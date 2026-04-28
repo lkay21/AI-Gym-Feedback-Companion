@@ -79,6 +79,12 @@ def create_app():
     # Register CV/exercise blueprint
     app.register_blueprint(exercises_bp, url_prefix='/api/cv')
 
+    # Ensure all SQLAlchemy models are materialized in every runtime (dev server
+    # and Gunicorn on ECS). Previously this lived in main(), which Gunicorn
+    # does not execute.
+    with app.app_context():
+        db.create_all()
+
     # Load fitness benchmarks on startup for integration verification
     try:
         benchmarks = load_fitness_benchmarks()
@@ -104,8 +110,6 @@ def create_app():
 
 def main():
     app = create_app()
-    with app.app_context():
-        db.create_all()
     
     app.run(debug=True, port=5001)
     
