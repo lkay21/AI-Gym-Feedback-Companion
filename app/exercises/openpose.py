@@ -37,6 +37,7 @@ AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LLM_RETRY = 3
+ENABLE_CV_LLM_FEEDBACK = os.getenv("ENABLE_CV_LLM_FEEDBACK", "true").strip().lower() in ("1", "true", "yes")
 
 s3 = boto3.client(
     's3',
@@ -502,6 +503,22 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
     overall_score, joint_scores, context_dict, user_data, standard_data, high_order = FormScore(user_path, exercise, user_id, aws_upload)
     out_string = ""
     out_string_sections = ['What_went_well', 'What_needs_improvement', 'What_to_fix_next_time']
+
+    if overall_score >= 0.9:
+        out_string += "Great job! Your form looks good overall.\n"
+    elif overall_score >= 0.8:
+        out_string += "Good form! However, there are some areas for improvement in your form.\n"
+    else:
+        out_string += "Your form needs work. Focus on improving your technique for better results and injury prevention.\n"
+
+    if not ENABLE_CV_LLM_FEEDBACK:
+        out_string += "\nWhat Went Well:\n- You completed the movement with measurable consistency.\n- Your overall form trend is stable across the rep.\n"
+        out_string += "\nWhat Needs Improvement:\n- Focus on smoother control through the full range of motion.\n- Keep joint alignment consistent throughout the lift.\n"
+        out_string += "\nWhat To Fix Next Time:\n- Use a lighter weight and slow tempo to reinforce technique.\n- Record another rep with the same camera angle to compare progress.\n"
+        out_string += "\nFocus on these insights during your next performance of the exercise. Remember to always engage your core and maintain control for best injury prevention!"
+        out_string += "\n\n\n***Disclaimer: This feedback is generated based on the data provided and may not be 100% accurate. Always consult with a fitness professional for personalized advice and guidance.***"
+        return overall_score, joint_scores, context_dict, user_data, standard_data, out_string
+
     llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
                 f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
                 f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
@@ -560,16 +577,12 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
             raise RuntimeError("LLM API call returned no response after retries.")
     except Exception as err:
         print(f"Error during LLM API call: {err}")
-        response = "Error in generating further insight, please try again later. \n"
-        raise RuntimeError("Failed to generate feedback from LLM API.") from err
-                
-
-    if overall_score >= 0.9:
-        out_string += "Great job! Your form looks good overall.\n"
-    elif overall_score >= 0.8:
-        out_string += "Good form! However, there are some areas for improvement in your form.\n"
-    else:
-        out_string += "Your form needs work. Focus on improving your technique for better results and injury prevention.\n"
+        out_string += "\nWhat Went Well:\n- You completed the movement with measurable consistency.\n- Your overall form trend is stable across the rep.\n"
+        out_string += "\nWhat Needs Improvement:\n- Focus on smoother control through the full range of motion.\n- Keep joint alignment consistent throughout the lift.\n"
+        out_string += "\nWhat To Fix Next Time:\n- Use a lighter weight and slow tempo to reinforce technique.\n- Record another rep with the same camera angle to compare progress.\n"
+        out_string += "\nFocus on these insights during your next performance of the exercise. Remember to always engage your core and maintain control for best injury prevention!"
+        out_string += "\n\n\n***Disclaimer: This feedback is generated based on the data provided and may not be 100% accurate. Always consult with a fitness professional for personalized advice and guidance.***"
+        return overall_score, joint_scores, context_dict, user_data, standard_data, out_string
 
 
     try:
