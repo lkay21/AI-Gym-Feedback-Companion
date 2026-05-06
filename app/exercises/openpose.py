@@ -7,6 +7,7 @@ import importlib
 from dotenv import load_dotenv
 import numpy as np
 # import exercise as ex
+import time
 from . import exercise as ex
 import time
 from sklearn.metrics import root_mean_squared_error
@@ -36,6 +37,7 @@ AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LLM_RETRY = 3
+ENABLE_CV_LLM_FEEDBACK = os.getenv("ENABLE_CV_LLM_FEEDBACK", "true").strip().lower() in ("1", "true", "yes")
 
 s3 = boto3.client(
     's3',
@@ -89,21 +91,15 @@ def video_robustness_check(video_path):
     if not os.path.exists(video_path):
         raise FileNotFoundError(f"Input video not found at: {video_path}")
 
-    # Check container format and convert to MP4 when possible.
-    if MediaInfo is not None:
-        try:
-            media_info = MediaInfo.parse(video_path)
-            if media_info.general_tracks:
-                container_format = media_info.general_tracks[0].format or ""
-                if not ("MPEG-4" in container_format or "MP4" in container_format):
-                    output_path = video_path.rsplit('.', 1)[0] + ".mp4"
-                    video_path = mov_to_mp4(video_path, output_path)
-                else:
-                    print(f"Video format is acceptable: {container_format}")
-        except Exception as e:
-            # pymediainfo requires a native MediaInfo library; if it's missing or
-            # fails to load, we still want OpenCV processing to continue.
-            print(f"[warn] MediaInfo.parse failed ({type(e).__name__}): {e}")
+    media_info = MediaInfo.parse(video_path)
+
+    if media_info.general_tracks:
+        container_format = media_info.general_tracks[0].format or ""
+        if not ("MPEG-4" in container_format or "MP4" in container_format):
+            output_path = video_path.rsplit('.', 1)[0] + ".mp4"
+            video_path = mov_to_mp4(video_path, output_path)
+        else:
+            print(f"Video format is acceptable: {container_format}")
 
     cap = cv.VideoCapture(video_path)
     if not cap.isOpened():
@@ -501,6 +497,22 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
     overall_score, joint_scores, context_dict, user_data, standard_data, high_order = FormScore(user_path, exercise, user_id, aws_upload)
     out_string = ""
     out_string_sections = ['What_went_well', 'What_needs_improvement', 'What_to_fix_next_time']
+
+    if overall_score >= 0.9:
+        out_string += "Great job! Your form looks good overall.\n"
+    elif overall_score >= 0.8:
+        out_string += "Good form! However, there are some areas for improvement in your form.\n"
+    else:
+        out_string += "Your form needs work. Focus on improving your technique for better results and injury prevention.\n"
+
+    if not ENABLE_CV_LLM_FEEDBACK:
+        out_string += "\nWhat Went Well:\n- You completed the movement with measurable consistency.\n- Your overall form trend is stable across the rep.\n"
+        out_string += "\nWhat Needs Improvement:\n- Focus on smoother control through the full range of motion.\n- Keep joint alignment consistent throughout the lift.\n"
+        out_string += "\nWhat To Fix Next Time:\n- Use a lighter weight and slow tempo to reinforce technique.\n- Record another rep with the same camera angle to compare progress.\n"
+        out_string += "\nFocus on these insights during your next performance of the exercise. Remember to always engage your core and maintain control for best injury prevention!"
+        out_string += "\n\n\n***Disclaimer: This feedback is generated based on the data provided and may not be 100% accurate. Always consult with a fitness professional for personalized advice and guidance.***"
+        return overall_score, joint_scores, context_dict, user_data, standard_data, out_string
+
     llm_prompt = f"You are acting as a fitness coach providing feedback to a user based on their performance of a one repetition of an exercise." \
                 f"The exercise performed is {exercise} and the user's overall score is {overall_score}." \
                 f"This score has been calculated by comparing data (created from CV pose estimation) from the user's video and a standard form video." \
@@ -559,16 +571,12 @@ def user_output(user_path, exercise, user_id, aws_upload=False):
             raise RuntimeError("LLM API call returned no response after retries.")
     except Exception as err:
         print(f"Error during LLM API call: {err}")
-        response = "Error in generating further insight, please try again later. \n"
-        raise RuntimeError("Failed to generate feedback from LLM API.") from err
-                
-
-    if overall_score >= 0.9:
-        out_string += "Great job! Your form looks good overall.\n"
-    elif overall_score >= 0.8:
-        out_string += "Good form! However, there are some areas for improvement in your form.\n"
-    else:
-        out_string += "Your form needs work. Focus on improving your technique for better results and injury prevention.\n"
+        out_string += "\nWhat Went Well:\n- You completed the movement with measurable consistency.\n- Your overall form trend is stable across the rep.\n"
+        out_string += "\nWhat Needs Improvement:\n- Focus on smoother control through the full range of motion.\n- Keep joint alignment consistent throughout the lift.\n"
+        out_string += "\nWhat To Fix Next Time:\n- Use a lighter weight and slow tempo to reinforce technique.\n- Record another rep with the same camera angle to compare progress.\n"
+        out_string += "\nFocus on these insights during your next performance of the exercise. Remember to always engage your core and maintain control for best injury prevention!"
+        out_string += "\n\n\n***Disclaimer: This feedback is generated based on the data provided and may not be 100% accurate. Always consult with a fitness professional for personalized advice and guidance.***"
+        return overall_score, joint_scores, context_dict, user_data, standard_data, out_string
 
 
     try:
@@ -665,34 +673,58 @@ if __name__ == "__main__":
     # exercise_str = "shoulder_press"
     # example_vid = "shoulder_press.mov"
 
-    # train_exercises = ['bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
-    #              'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
-    #              'shoulder_press'
-    #             ]
-    # train_vids = [
-    #         'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
-    #         'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
-    #         'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV'
-    #        ]
-    
+    test_exercises = ['bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press', 'bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press', 'bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press', 'bent_over_row', 'hammer_curl', 'bicep_curl', 'lateral_raise', 'front_raise', 'close_grip_pulldown', 'iso_left_front_raise',
+                 'iso_left_overhead_extension', 'overhead_extension', 'pushdown', 'iso_right_front_raise', 'iso_right_overhead_extension', 
+                 'shoulder_press'
+                ]
+    test_vids = [
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV',
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV',
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV',
+            'logan_bent_over_row.MOV', 'logan_hammer_curl.MOV', 'logan_bicep_curl.MOV', 'logan_lat_raise.MOV', 'logan_front_raise.MOV',
+            'logan_close_grip_pulldown.MOV', 'logan_left_front_raise.MOV', 'logan_left_overhead_extension.MOV', 'logan_overhead_extension.MOV',
+            'logan_pushdown.MOV', 'logan_right_front_raise.MOV', 'logan_right_overhead_extension.MOV', 'logan_shoulder_press.MOV'
+           ]
+        
     # test_exercises = ["lateral_raise", "lateral_raise", "bicep_curl"]
     # test_vids = ["lat_raise_good.mp4", "lat_raise_bad.mp4", "rename.mp4"]
     
     # assert len(train_exercises) == len(train_vids), "Mismatch between exercises and video files"
-    # assert len(test_exercises) == len(test_vids), "Mismatch between exercises and video files"
+    assert len(test_exercises) == len(test_vids), "Mismatch between exercises and video files"
 
-    # # if test == 0, training
-    # test = 0
+    # if test == 0, training
+    test = 1
+    num_in_time = 0
 
-    # if not(test):
-    #     for exercise, vid in zip(train_exercises, train_vids):
-    #         get_standard_pose(vid, exercise)
-    # else:
-    #     for exercise, vid in zip(test_exercises, test_vids):
-    #         overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(vid, exercise)
-    #         print(f"Overall Score: {overall_score}")
-    #         print(f"\nFeedback for {exercise}:\n")
-    #         print(out_string)
+    if not(test):
+        for exercise, vid in zip(train_exercises, train_vids):
+            get_standard_pose(vid, exercise)
+    else:
+        for exercise, vid in zip(test_exercises, test_vids):
+            start_time = time.time()
+            overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(vid, exercise, user_id="test_user", aws_upload=False)
+            print(f"Overall Score: {overall_score}")
+            print(f"\nFeedback for {exercise}:\n")
+            print(out_string)
+            end_time = time.time()
+            print(f"Time taken for user output generation: {end_time - start_time} seconds")
+            if end_time - start_time <= 30:
+                num_in_time += 1
+            print(f"{num_in_time} out of {len(test_exercises)} feedback generations completed within 30 seconds so far.\n")
+            time.sleep(5)
+    print(f"\n{num_in_time} out of {len(test_exercises)} feedback generations were completed within 30 seconds.")
 
 
     # vid_strings = ["hammer_curl.mp4", "shoulder_press.mp4", "bent_over_row.mp4", "lat_pulldown.mp4"]
@@ -705,10 +737,10 @@ if __name__ == "__main__":
     # get_standard_pose(example_vid, exercise_str)
     # get_standard_pose(example_vid_2, exercise_str_2)
 
-    overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(rename_vid, exercise_str, "test_user", aws_upload=False)
-    print(f"Overall Score: {overall_score}")
-    print(f"\nFeedback for {exercise_str}:\n")
-    print(out_string)
+    # overall_score, joint_scores, context_dict, user_data, standard_data, out_string = user_output(rename_vid, exercise_str, "test_user", aws_upload=False)
+    # print(f"Overall Score: {overall_score}")
+    # print(f"\nFeedback for {exercise_str}:\n")
+    # print(out_string)
 
     # overall, joints, context_dict = FormScore(rename_vid, exercise_str)
 
